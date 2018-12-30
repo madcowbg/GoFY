@@ -8,8 +8,12 @@ type Return float64
 type Rate float64
 
 type Option interface {
+	Maturity() Time
 	Payoff(spot Money) Money
-	Price(spot Money, t Time) Money
+
+	Rho(spot Money, t Time) float64
+
+	Parameters() OptionParameters // TODO maybe should not be part of contract?
 }
 
 type OptionParameters struct {
@@ -17,31 +21,17 @@ type OptionParameters struct {
 	r     Rate
 }
 
-type CallOption struct {
-	parameters OptionParameters
-	strike     Money
-	T          Time
-}
-
-func Call(sigma Return, r Rate, strike Money, T Time) *CallOption {
-	return &CallOption{OptionParameters{sigma, r}, strike, T}
-}
-
-func (option *CallOption) Payoff(spot Money) Money {
-	return Money(math.Max(0.0, float64(spot-option.strike)))
-}
-
-func (option *CallOption) Price(spot Money, t Time) Money {
-	if t >= option.T {
+func Price(option Option, spot Money, t Time) Money {
+	if t >= option.Maturity() {
 		return option.Payoff(spot)
 	}
 
 	// binomial model
-	sigma := float64(option.parameters.sigma)
-	r := float64(option.parameters.r)
+	sigma := float64(option.Parameters().sigma)
+	r := float64(option.Parameters().r)
 
 	nsteps := 1000
-	step := (float64(option.T) - float64(t)) / float64(nsteps)
+	step := (float64(option.Maturity()) - float64(t)) / float64(nsteps)
 
 	discountFactor := math.Exp(-r * step)
 
@@ -84,32 +74,21 @@ func diff2nd(f func(x float64) float64, x, d float64) float64 {
 
 func Delta(option Option, spot Money, t Time) float64 {
 	return diff(
-		func(x float64) float64 { return float64(option.Price(Money(x), t)) },
+		func(x float64) float64 { return float64(Price(option, Money(x), t)) },
 		float64(spot),
 		0.01*float64(spot))
 }
 
 func Gamma(option Option, spot Money, t Time) float64 {
 	return diff2nd(
-		func(x float64) float64 { return float64(option.Price(Money(x), t)) },
+		func(x float64) float64 { return float64(Price(option, Money(x), t)) },
 		float64(spot),
 		0.01*float64(spot))
 }
 
-func (option *CallOption) Rho(spot Money, t Time) float64 {
-	return diff(
-		func(r float64) float64 {
-			tweaked := *option
-			tweaked.parameters.r = Rate(r)
-			return float64(tweaked.Price(spot, t))
-		},
-		float64(option.parameters.r),
-		0.0001)
-}
-
 func Theta(option Option, spot Money, t Time) float64 {
 	return diff(
-		func(x float64) float64 { return float64(option.Price(spot, Time(x))) },
+		func(x float64) float64 { return float64(Price(option, spot, Time(x))) },
 		float64(t),
 		0.001)
 }

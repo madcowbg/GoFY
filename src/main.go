@@ -12,7 +12,7 @@ func main() {
 	for i := 1; i < 20; i++ {
 		spot := option.Money(i * 10.0)
 		fmt.Printf("S=%f V(T)=%f\n", float64(spot), opt.Payoff(spot))
-		fmt.Printf("V(0)=%f\n", opt.Price(spot, 0))
+		fmt.Printf("V(0)=%f\n", option.Price(opt, spot, 0))
 		fmt.Printf("Delta(0)=%f\n", option.Delta(opt, spot, 0))
 		fmt.Printf("Gamma(0)=%f\n", option.Gamma(opt, spot, 0))
 		fmt.Printf("Rho(0)=%f\n", opt.Rho(spot, 0))

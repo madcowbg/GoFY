@@ -40,7 +40,7 @@ func EqualCallTot(msg string, t *testing.T, xs []option.Money, f func(price opti
 }
 
 func TestEuropeanCallATMStatsAreCorrect(t *testing.T) {
-	opt := option.Call(0.2, 0.02, 100, 1)
+	var opt option.Option = option.Call(0.2, 0.02, 100, 1)
 
 	spots := make([]option.Money, 10)
 	for i := 0; i < 10; i++ {
@@ -57,7 +57,7 @@ func TestEuropeanCallATMStatsAreCorrect(t *testing.T) {
 	EqualCallTot(
 		"prices",
 		t, spots,
-		func(price option.Money) float64 { return float64(opt.Price(price, 0)) },
+		func(price option.Money) float64 { return float64(option.Price(opt, price, 0)) },
 		[]float64{0.00000, 0.00001, 0.00816, 0.31394, 2.54571, 8.91424, 19.52944, 32.78393, 47.20572, 62.03824},
 		1e-5)
 
