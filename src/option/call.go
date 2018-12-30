@@ -2,29 +2,33 @@ package option
 
 import "math"
 
-type CallOption struct {
+type EuropeanOption struct {
 	parameters OptionParameters
 	strike     Money
 	T          Time
 }
 
-func Call(sigma Return, r Rate, strike Money, T Time) *CallOption {
-	return &CallOption{OptionParameters{sigma, r}, strike, T}
+type EuropeanCallOption struct {
+	EuropeanOption
 }
 
-func (option *CallOption) Payoff(spot Money) Money {
+func Call(sigma Return, r Rate, strike Money, T Time) Option {
+	return &EuropeanCallOption{EuropeanOption{OptionParameters{sigma, r}, strike, T}}
+}
+
+func (option *EuropeanCallOption) Payoff(spot Money) Money {
 	return Money(math.Max(0.0, float64(spot-option.strike)))
 }
 
-func (option *CallOption) Maturity() Time {
+func (option *EuropeanOption) Maturity() Time {
 	return option.T
 }
 
-func (option *CallOption) Parameters() OptionParameters {
+func (option *EuropeanOption) Parameters() OptionParameters {
 	return option.parameters
 }
 
-func (option *CallOption) Rho(spot Money, t Time) float64 {
+func (option *EuropeanCallOption) Rho(spot Money, t Time) float64 {
 	return diff(
 		func(r float64) float64 {
 			tweaked := *option
