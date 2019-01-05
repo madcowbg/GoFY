@@ -3,12 +3,11 @@ package option
 import "math"
 
 type EuropeanOption struct {
-	Strike Money
-	T      Time
+	VanillaOption
 }
 
-func (option *EuropeanOption) Maturity() Time {
-	return option.T
+func (option *EuropeanOption) EarlyExcercise(excercisePayoff Money, nonExcercisedValue Money) Money {
+	return nonExcercisedValue
 }
 
 type EuropeanCallOption struct {

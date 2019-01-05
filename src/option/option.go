@@ -1,6 +1,8 @@
 package option
 
-import "math"
+import (
+	"math"
+)
 
 type Time float64
 type Money float64
@@ -10,7 +12,12 @@ type Rate float64
 type Pricing func(option Option, spot Money, t Time) Money
 type Greek func(option Option, spot Money, t Time) float64
 
+type Decision interface {
+	EarlyExcercise(spot Money, nonExcercisedValue Money) Money
+}
+
 type Option interface {
+	Decision
 	Maturity() Time
 	Payoff(spot Money) Money
 }
@@ -67,7 +74,14 @@ func binomialModel(option Option, spot Money, t Time, sigmaX Return, rf Rate) Mo
 
 	for n := nsteps; n >= 1; n-- {
 		for j := 0; j < n; j++ {
-			V[j] = Money((p*float64(V[j+1]) + (1-p)*float64(V[j])) * discountFactor)
+			S[j] = Money(float64(S[j]) / d)
+		}
+		S[n] = Money(math.NaN())
+
+		for j := 0; j < n; j++ {
+			V[j] = option.EarlyExcercise(
+				option.Payoff(S[j]),
+				Money((p*float64(V[j+1])+(1-p)*float64(V[j]))*discountFactor))
 		}
 	}
 	return V[0]
