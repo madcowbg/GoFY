@@ -7,6 +7,10 @@ type EuropeanOption struct {
 	T      Time
 }
 
+func (option *EuropeanOption) Maturity() Time {
+	return option.T
+}
+
 type EuropeanCallOption struct {
 	EuropeanOption
 }
@@ -15,6 +19,10 @@ func (option *EuropeanCallOption) Payoff(spot Money) Money {
 	return Money(math.Max(0.0, float64(spot-option.Strike)))
 }
 
-func (option *EuropeanOption) Maturity() Time {
-	return option.T
+type EuropeanPutOption struct {
+	EuropeanOption
+}
+
+func (option *EuropeanPutOption) Payoff(spot Money) Money {
+	return Money(math.Max(0.0, float64(option.Strike-spot)))
 }
