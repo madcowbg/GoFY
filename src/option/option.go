@@ -7,28 +7,37 @@ type Money float64
 type Return float64
 type Rate float64
 
+type Pricing func(option Option, spot Money, t Time) Money
+type Greek func(option Option, spot Money, t Time) float64
+
 type Option interface {
 	Maturity() Time
 	Payoff(spot Money) Money
-
-	Rho(spot Money, t Time) float64
-
-	Parameters() OptionParameters // TODO maybe should not be part of contract?
 }
 
-type OptionParameters struct {
-	sigma Return
-	r     Rate
+type PricingParameters struct {
+	Sigma Return
+	R     Rate
 }
 
-func Price(option Option, spot Money, t Time) Money {
+func Price(parameters PricingParameters) Pricing {
+	return func(option Option, spot Money, t Time) Money {
+		return binomialModel(
+			option,
+			spot,
+			t,
+			parameters.Sigma,
+			parameters.R)
+	}
+}
+
+func binomialModel(option Option, spot Money, t Time, sigmaX Return, rf Rate) Money {
 	if t >= option.Maturity() {
 		return option.Payoff(spot)
 	}
 
-	// binomial model
-	sigma := float64(option.Parameters().sigma)
-	r := float64(option.Parameters().r)
+	sigma := float64(sigmaX)
+	r := float64(rf)
 
 	nsteps := 1000
 	step := (float64(option.Maturity()) - float64(t)) / float64(nsteps)
@@ -72,23 +81,42 @@ func diff2nd(f func(x float64) float64, x, d float64) float64 {
 	return (f(x+d) - 2*f(x) + f(x-d)) / (2 * d)
 }
 
-func Delta(option Option, spot Money, t Time) float64 {
-	return diff(
-		func(x float64) float64 { return float64(Price(option, Money(x), t)) },
-		float64(spot),
-		0.01*float64(spot))
+func Delta(pricing Pricing) Greek {
+	return func(option Option, spot Money, t Time) float64 {
+		return diff(
+			func(x float64) float64 { return float64(pricing(option, Money(x), t)) },
+			float64(spot),
+			0.01*float64(spot))
+	}
 }
 
-func Gamma(option Option, spot Money, t Time) float64 {
-	return diff2nd(
-		func(x float64) float64 { return float64(Price(option, Money(x), t)) },
-		float64(spot),
-		0.01*float64(spot))
+func Gamma(pricing Pricing) Greek {
+	return func(option Option, spot Money, t Time) float64 {
+		return diff2nd(
+			func(x float64) float64 { return float64(pricing(option, Money(x), t)) },
+			float64(spot),
+			0.01*float64(spot))
+	}
 }
 
-func Theta(option Option, spot Money, t Time) float64 {
-	return diff(
-		func(x float64) float64 { return float64(Price(option, spot, Time(x))) },
-		float64(t),
-		0.001)
+func Theta(pricing Pricing) Greek {
+	return func(option Option, spot Money, t Time) float64 {
+		return diff(
+			func(x float64) float64 { return float64(pricing(option, spot, Time(x))) },
+			float64(t),
+			0.001)
+	}
+}
+
+func Rho(parameters PricingParameters) Greek {
+	return func(option Option, spot Money, t Time) float64 {
+		return diff(
+			func(r float64) float64 {
+				tweakedParameters := parameters
+				tweakedParameters.R = Rate(r)
+				return float64(Price(tweakedParameters)(option, spot, t))
+			},
+			float64(parameters.R),
+			0.0001)
+	}
 }
