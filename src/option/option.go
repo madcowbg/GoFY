@@ -39,7 +39,7 @@ func diff(f func(x float64) float64, x, d float64) float64 {
 }
 
 func diff2nd(f func(x float64) float64, x, d float64) float64 {
-	return (f(x+d) - 2*f(x) + f(x-d)) / (2 * d)
+	return (f(x+d) - 2*f(x) + f(x-d)) / (d * d)
 }
 
 func Delta(pricing Pricing) Greek {

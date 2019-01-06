@@ -79,7 +79,7 @@ func TestEuropeanCallATMStatsAreCorrect(t *testing.T) {
 		"gammas",
 		t, spots,
 		func(price Money) float64 { return Gamma(pricing)(callOpt, price, 0) },
-		[]float64{0.00000, 0.00000, 0.00020, 0.00276, 0.00840, 0.01236, 0.00792, 0.00293, 0.00113, 0.00040},
+		[]float64{0.00000, 0.00000, 0.00071, 0.00788, 0.01976, 0.02473, 0.01378, 0.00450, 0.00156, 0.00050},
 		1e-5)
 
 	equalCallTot(
@@ -151,7 +151,7 @@ func TestAmericanPutATMStatsAreCorrect(t *testing.T) {
 		"gammas",
 		t, spots,
 		func(price Money) float64 { return Gamma(pricing)(callOpt, price, 0) },
-		[]float64{0.00000, 0.00000, -0.00000, -0.00000, 0.00982, 0.01241, 0.00805, 0.00301, 0.00115, 0.00041},
+		[]float64{0.00000, 0.00000, -0.00000, -0.00000, 0.02310, 0.02482, 0.01400, 0.00463, 0.00159, 0.00051},
 		1e-5)
 
 	equalCallTot(
