@@ -170,13 +170,17 @@ func TestAmericanPutATMStatsAreCorrect(t *testing.T) {
 }
 
 func TestCompareGridVsBinomial(t *testing.T) {
-	spot := Money(100)
-
 	putOpt := &AmericanPutOption{AmericanOption{VanillaOption{100, 1}}}
 	callOpt := &EuropeanCallOption{EuropeanOption{VanillaOption{100, 1}}}
 
-	checkGridVsBinomial(t, putOpt, spot)
-	checkGridVsBinomial(t, callOpt, spot)
+	checkGridVsBinomial(t, putOpt, Money(100))
+	checkGridVsBinomial(t, callOpt, Money(100))
+
+	checkGridVsBinomial(t, putOpt, Money(500))
+	checkGridVsBinomial(t, callOpt, Money(500))
+
+	checkGridVsBinomial(t, putOpt, Money(20))
+	checkGridVsBinomial(t, callOpt, Money(20))
 }
 
 func checkGridVsBinomial(t *testing.T, opt Option, spot Money) {

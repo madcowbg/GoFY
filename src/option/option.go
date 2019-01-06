@@ -1,6 +1,9 @@
 package option
 
-import "github.com/phil-mansfield/gotetra/math/interpolate"
+import (
+	"github.com/phil-mansfield/gotetra/math/interpolate"
+	"math"
+)
 
 type Time float64
 type Money float64
@@ -40,7 +43,7 @@ func BinomialPricing(parameters PricingParameters) Pricing {
 
 func GridPricing(parameters PricingParameters) Pricing {
 	return func(option Option, spot Money, t Time) Money {
-		SInf := 2.0 * float64(option.Strike())
+		SInf := math.Max(2.0*float64(option.Strike()), 1.1*float64(spot))
 		NAS := 200
 
 		S, V := FiniteDifferenceGrid(NAS, SInf)(
