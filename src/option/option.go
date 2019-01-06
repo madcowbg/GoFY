@@ -1,9 +1,5 @@
 package option
 
-import (
-	"math"
-)
-
 type Time float64
 type Money float64
 type Return float64
@@ -18,7 +14,7 @@ type Decision interface {
 
 type Option interface {
 	Decision
-	Maturity() Time
+	Expiration() Time
 	Payoff(spot Money) Money
 }
 
@@ -36,55 +32,6 @@ func Price(parameters PricingParameters) Pricing {
 			parameters.Sigma,
 			parameters.R)
 	}
-}
-
-func binomialModel(option Option, spot Money, t Time, sigmaX Return, rf Rate) Money {
-	if t >= option.Maturity() {
-		return option.Payoff(spot)
-	}
-
-	sigma := float64(sigmaX)
-	r := float64(rf)
-
-	nsteps := 1000
-	step := (float64(option.Maturity()) - float64(t)) / float64(nsteps)
-
-	discountFactor := math.Exp(-r * step)
-
-	temp2 := 0.5 * (discountFactor + math.Exp((r+sigma*sigma)*step))
-
-	u := temp2 + math.Sqrt(math.Pow(temp2, 2)-1)
-	d := 1 / u
-	p := (math.Exp(r*step) - d) / (u - d)
-
-	S := make([]Money, nsteps+1)
-	S[0] = spot
-
-	for n := 1; n <= nsteps; n++ {
-		for j := n; j >= 1; j-- {
-			S[j] = Money(u * float64(S[j-1]))
-		}
-		S[0] = Money(d * float64(S[0]))
-	}
-
-	V := make([]Money, nsteps+1)
-	for j := 0; j <= nsteps; j++ {
-		V[j] = option.Payoff(S[j])
-	}
-
-	for n := nsteps; n >= 1; n-- {
-		for j := 0; j < n; j++ {
-			S[j] = Money(float64(S[j]) / d)
-		}
-		S[n] = Money(math.NaN())
-
-		for j := 0; j < n; j++ {
-			V[j] = option.EarlyExcercise(
-				option.Payoff(S[j]),
-				Money((p*float64(V[j+1])+(1-p)*float64(V[j]))*discountFactor))
-		}
-	}
-	return V[0]
 }
 
 func diff(f func(x float64) float64, x, d float64) float64 {

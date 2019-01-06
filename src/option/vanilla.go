@@ -5,6 +5,6 @@ type VanillaOption struct {
 	T      Time
 }
 
-func (option *VanillaOption) Maturity() Time {
+func (option *VanillaOption) Expiration() Time {
 	return option.T
 }
