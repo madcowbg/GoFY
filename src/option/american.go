@@ -17,7 +17,7 @@ type AmericanCallOption struct {
 }
 
 func (option *AmericanCallOption) Payoff(spot Money) Money {
-	return Money(math.Max(0.0, float64(spot-option.Strike)))
+	return Money(math.Max(0.0, float64(spot-option.S)))
 }
 
 type AmericanPutOption struct {
@@ -25,5 +25,5 @@ type AmericanPutOption struct {
 }
 
 func (option *AmericanPutOption) Payoff(spot Money) Money {
-	return Money(math.Max(0.0, float64(option.Strike-spot)))
+	return Money(math.Max(0.0, float64(option.S-spot)))
 }

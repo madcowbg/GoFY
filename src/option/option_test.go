@@ -45,7 +45,7 @@ func equalCallTot(msg string, t *testing.T, xs []Money, f func(price Money) floa
 
 func TestEuropeanCallATMStatsAreCorrect(t *testing.T) {
 	pricingParameters := PricingParameters{0.2, 0.02}
-	pricing := Price(pricingParameters)
+	pricing := BinomialPricing(pricingParameters)
 
 	var callOpt Option = &EuropeanCallOption{EuropeanOption{VanillaOption{100, 1}}}
 
@@ -92,7 +92,7 @@ func TestEuropeanCallATMStatsAreCorrect(t *testing.T) {
 	equalCallTot(
 		"rhos",
 		t, spots,
-		func(price Money) float64 { return Rho(pricingParameters)(callOpt, price, 0) },
+		func(price Money) float64 { return Rho(BinomialPricing, pricingParameters)(callOpt, price, 0) },
 		[]float64{0.00000, 0.00022, 0.13612, 3.64857, 20.40996, 49.01760, 74.27877, 88.73383, 94.92619, 97.10363},
 		1e-5)
 }
@@ -100,10 +100,10 @@ func TestEuropeanCallATMStatsAreCorrect(t *testing.T) {
 func TestPutCallParity(t *testing.T) {
 	R := Rate(0.02)
 	pricingParameters := PricingParameters{0.2, R}
-	pricing := Price(pricingParameters)
+	pricing := BinomialPricing(pricingParameters)
 
-	callOpt := &EuropeanCallOption{EuropeanOption: EuropeanOption{VanillaOption{Strike: 100, T: 1}}}
-	putOpt := &EuropeanPutOption{EuropeanOption: EuropeanOption{VanillaOption{Strike: 100, T: 1}}}
+	callOpt := &EuropeanCallOption{EuropeanOption: EuropeanOption{VanillaOption{S: 100, T: 1}}}
+	putOpt := &EuropeanPutOption{EuropeanOption: EuropeanOption{VanillaOption{S: 100, T: 1}}}
 
 	spot := Money(100)
 	C := pricing(callOpt, spot, 0)
@@ -117,9 +117,9 @@ func TestPutCallParity(t *testing.T) {
 
 func TestAmericanPutATMStatsAreCorrect(t *testing.T) {
 	pricingParameters := PricingParameters{0.2, 0.02}
-	pricing := Price(pricingParameters)
+	pricing := BinomialPricing(pricingParameters)
 
-	var callOpt Option = &AmericanPutOption{AmericanOption{VanillaOption{100, 1}}}
+	var putOpt Option = &AmericanPutOption{AmericanOption{VanillaOption{100, 1}}}
 
 	spots := make([]Money, 10)
 	for i := 0; i < 10; i++ {
@@ -129,42 +129,70 @@ func TestAmericanPutATMStatsAreCorrect(t *testing.T) {
 	equalCallTot(
 		"payoffs",
 		t, spots,
-		func(price Money) float64 { return float64(callOpt.Payoff(price)) },
+		func(price Money) float64 { return float64(putOpt.Payoff(price)) },
 		[]float64{75.00000, 60.00000, 45.00000, 30.00000, 15.00000, 0.00000, 0.00000, 0.00000, 0.00000, 0.00000},
 		1e-5)
 
 	equalCallTot(
 		"prices",
 		t, spots,
-		func(price Money) float64 { return float64(pricing(callOpt, price, 0)) },
+		func(price Money) float64 { return float64(pricing(putOpt, price, 0)) },
 		[]float64{75.00000, 60.00000, 45.00000, 30.00000, 16.16243, 7.10987, 2.59578, 0.81507, 0.22814, 0.05866},
 		1e-5)
 
 	equalCallTot(
 		"deltas",
 		t, spots,
-		func(price Money) float64 { return Delta(pricing)(callOpt, price, 0) },
+		func(price Money) float64 { return Delta(pricing)(putOpt, price, 0) },
 		[]float64{-1.00000, -1.00000, -1.00000, -1.00000, -0.77702, -0.43565, -0.18898, -0.06604, -0.02022, -0.00550},
 		1e-5)
 
 	equalCallTot(
 		"gammas",
 		t, spots,
-		func(price Money) float64 { return Gamma(pricing)(callOpt, price, 0) },
+		func(price Money) float64 { return Gamma(pricing)(putOpt, price, 0) },
 		[]float64{0.00000, 0.00000, -0.00000, -0.00000, 0.02310, 0.02482, 0.01400, 0.00463, 0.00159, 0.00051},
 		1e-5)
 
 	equalCallTot(
 		"thetas",
 		t, spots,
-		func(price Money) float64 { return Theta(pricing)(callOpt, price, 0) },
+		func(price Money) float64 { return Theta(pricing)(putOpt, price, 0) },
 		[]float64{-0.00000, -0.00000, -0.00000, 0.00000, -1.67956, -3.13576, -2.62546, -1.53017, -0.63327, -0.21920},
 		1e-5)
 
 	equalCallTot(
 		"rhos",
 		t, spots,
-		func(price Money) float64 { return Rho(pricingParameters)(callOpt, price, 0) },
+		func(price Money) float64 { return Rho(BinomialPricing, pricingParameters)(putOpt, price, 0) },
 		[]float64{-0.00000, 0.00000, -0.00000, 0.00000, -39.06065, -38.36523, -21.09362, -8.68014, -2.96423, -0.88939},
 		1e-5)
+}
+
+func TestCompareGridVsBinomial(t *testing.T) {
+	spot := Money(100)
+
+	putOpt := &AmericanPutOption{AmericanOption{VanillaOption{100, 1}}}
+	callOpt := &EuropeanCallOption{EuropeanOption{VanillaOption{100, 1}}}
+
+	checkGridVsBinomial(t, putOpt, spot)
+	checkGridVsBinomial(t, callOpt, spot)
+}
+
+func checkGridVsBinomial(t *testing.T, opt Option, spot Money) {
+	parameters := PricingParameters{0.2, 0.02}
+	binomial := BinomialPricing(parameters)
+	grid := GridPricing(parameters)
+
+	checkGridVsBinomialVal(t, "pricing", float64(binomial(opt, spot, 0)), float64(grid(opt, spot, 0)), absCmp(0.005))
+	checkGridVsBinomialVal(t, "Delta", Delta(binomial)(opt, spot, 0), Delta(grid)(opt, spot, 0), absCmp(0.0001))
+	checkGridVsBinomialVal(t, "Gamma", Gamma(binomial)(opt, spot, 0), Gamma(grid)(opt, spot, 0), absCmp(0.01))
+	checkGridVsBinomialVal(t, "Theta", Theta(binomial)(opt, spot, 0), Theta(grid)(opt, spot, 0), absCmp(0.005))
+	checkGridVsBinomialVal(t, "Delta", Rho(BinomialPricing, parameters)(opt, spot, 0), Rho(GridPricing, parameters)(opt, spot, 0), absCmp(0.1))
+}
+
+func checkGridVsBinomialVal(t *testing.T, msg string, binv, gridv float64, comp cmp.Option) {
+	if !cmp.Equal(gridv, binv, comp) {
+		t.Errorf("%s is diff: binomial = %f, grid = %f, diff = %f\n", msg, binv, gridv, math.Abs(binv-gridv))
+	}
 }

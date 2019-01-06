@@ -9,19 +9,25 @@ import (
 func main() {
 	// dec := json.NewDecoder(os.Stdin)
 	// enc := json.NewEncoder(os.Stdout)
-	pricingParameters := option.PricingParameters{0.2, 0.02}
-	pricing := option.Price(pricingParameters)
+	parameters := option.PricingParameters{0.2, 0.02}
+	pricing := option.BinomialPricing(parameters)
+
+	gridPricing := option.GridPricing(parameters)
 
 	printGreekDiagATM(
-		pricingParameters, pricing,
+		parameters, pricing,
 		&option.EuropeanCallOption{option.EuropeanOption{option.VanillaOption{100, 1}}})
 
 	printGreekDiagATM(
-		pricingParameters, pricing,
+		parameters, gridPricing,
+		&option.EuropeanCallOption{option.EuropeanOption{option.VanillaOption{100, 1}}})
+
+	printGreekDiagATM(
+		parameters, pricing,
 		&option.EuropeanPutOption{option.EuropeanOption{option.VanillaOption{100, 1}}})
 
 	printGreekDiagATM(
-		pricingParameters, pricing,
+		parameters, pricing,
 		&option.AmericanPutOption{option.AmericanOption{option.VanillaOption{100, 1}}})
 }
 
@@ -32,6 +38,6 @@ func printGreekDiagATM(pricingParameters option.PricingParameters, pricing optio
 	fmt.Printf("V(0)=%f\n", pricing(opt, spot, 0))
 	fmt.Printf("Delta(0)=%f\n", option.Delta(pricing)(opt, spot, 0))
 	fmt.Printf("Gamma(0)=%f\n", option.Gamma(pricing)(opt, spot, 0))
-	fmt.Printf("Rho(0)=%f\n", option.Rho(pricingParameters)(opt, spot, 0))
+	fmt.Printf("Rho(0)=%f\n", option.Rho(option.BinomialPricing, pricingParameters)(opt, spot, 0))
 	fmt.Printf("Theta(0)=%f\n", option.Theta(pricing)(opt, spot, 0.0))
 }

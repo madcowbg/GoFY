@@ -1,5 +1,7 @@
 package option
 
+import "github.com/phil-mansfield/gotetra/math/interpolate"
+
 type Time float64
 type Money float64
 type Return float64
@@ -16,6 +18,8 @@ type Option interface {
 	Decision
 	Expiration() Time
 	Payoff(spot Money) Money
+
+	Strike() Money // FIXME deprecated ... does not generalize!
 }
 
 type PricingParameters struct {
@@ -23,14 +27,34 @@ type PricingParameters struct {
 	R     Rate
 }
 
-func Price(parameters PricingParameters) Pricing {
+func BinomialPricing(parameters PricingParameters) Pricing {
 	return func(option Option, spot Money, t Time) Money {
-		return binomialModel(
+		return BinomialModel(
 			option,
 			spot,
 			t,
 			parameters.Sigma,
 			parameters.R)
+	}
+}
+
+func GridPricing(parameters PricingParameters) Pricing {
+	return func(option Option, spot Money, t Time) Money {
+		SInf := 2.0 * float64(option.Strike())
+		NAS := 200
+
+		S, V := FiniteDifferenceGrid(NAS, SInf)(
+			option,
+			t,
+			parameters.Sigma,
+			parameters.R)
+
+		V0 := make([]float64, len(S))
+		for i := 0; i < len(S); i++ {
+			V0[i] = V[i][len(V[0])-1]
+		}
+
+		return Money(interpolate.NewLinear(S, V0).Eval(float64(spot)))
 	}
 }
 
@@ -69,13 +93,13 @@ func Theta(pricing Pricing) Greek {
 	}
 }
 
-func Rho(parameters PricingParameters) Greek {
+func Rho(pricingFromParameters func(parameters PricingParameters) Pricing, parameters PricingParameters) Greek {
 	return func(option Option, spot Money, t Time) float64 {
 		return diff(
 			func(r float64) float64 {
 				tweakedParameters := parameters
 				tweakedParameters.R = Rate(r)
-				return float64(Price(tweakedParameters)(option, spot, t))
+				return float64(pricingFromParameters(tweakedParameters)(option, spot, t))
 			},
 			float64(parameters.R),
 			0.0001)

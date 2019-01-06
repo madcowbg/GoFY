@@ -2,7 +2,7 @@ package option
 
 import "math"
 
-func binomialModel(option Option, spot Money, t Time, sigmaX Return, rf Rate) Money {
+func BinomialModel(option Option, spot Money, t Time, sigmaX Return, rf Rate) Money {
 	if t >= option.Expiration() {
 		return option.Payoff(spot)
 	}
