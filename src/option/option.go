@@ -61,6 +61,12 @@ func GridPricing(parameters PricingParameters) Pricing {
 	}
 }
 
+func EuropeanMCPricing(parameters PricingParameters) Pricing {
+	return func(option Option, spot Money, t Time) Money {
+		return NoEarlyExcerciseMonteCarloModel(100000, 100, -1)(option, spot, t, parameters.Sigma, parameters.R)
+	}
+}
+
 func diff(f func(x float64) float64, x, d float64) float64 {
 	return (f(x+d) - f(x-d)) / (2 * d)
 }

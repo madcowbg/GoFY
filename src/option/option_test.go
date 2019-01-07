@@ -188,15 +188,31 @@ func checkGridVsBinomial(t *testing.T, opt Option, spot Money) {
 	binomial := BinomialPricing(parameters)
 	grid := GridPricing(parameters)
 
-	checkGridVsBinomialVal(t, "pricing", float64(binomial(opt, spot, 0)), float64(grid(opt, spot, 0)), absCmp(0.005))
-	checkGridVsBinomialVal(t, "Delta", Delta(binomial)(opt, spot, 0), Delta(grid)(opt, spot, 0), absCmp(0.0001))
-	checkGridVsBinomialVal(t, "Gamma", Gamma(binomial)(opt, spot, 0), Gamma(grid)(opt, spot, 0), absCmp(0.01))
-	checkGridVsBinomialVal(t, "Theta", Theta(binomial)(opt, spot, 0), Theta(grid)(opt, spot, 0), absCmp(0.005))
-	checkGridVsBinomialVal(t, "Delta", Rho(BinomialPricing, parameters)(opt, spot, 0), Rho(GridPricing, parameters)(opt, spot, 0), absCmp(0.1))
+	compareTwo("Bin vs Grid", t, "pricing", float64(binomial(opt, spot, 0)), float64(grid(opt, spot, 0)), absCmp(0.005))
+	compareTwo("Bin vs Grid", t, "Delta", Delta(binomial)(opt, spot, 0), Delta(grid)(opt, spot, 0), absCmp(0.0001))
+	compareTwo("Bin vs Grid", t, "Gamma", Gamma(binomial)(opt, spot, 0), Gamma(grid)(opt, spot, 0), absCmp(0.01))
+	compareTwo("Bin vs Grid", t, "Theta", Theta(binomial)(opt, spot, 0), Theta(grid)(opt, spot, 0), absCmp(0.005))
+	compareTwo("Bin vs Grid", t, "Delta", Rho(BinomialPricing, parameters)(opt, spot, 0), Rho(GridPricing, parameters)(opt, spot, 0), absCmp(0.1))
 }
 
-func checkGridVsBinomialVal(t *testing.T, msg string, binv, gridv float64, comp cmp.Option) {
+func compareTwo(desc string, t *testing.T, msg string, binv, gridv float64, comp cmp.Option) {
 	if !cmp.Equal(gridv, binv, comp) {
-		t.Errorf("%s is diff: binomial = %f, grid = %f, diff = %f\n", msg, binv, gridv, math.Abs(binv-gridv))
+		t.Errorf("%s %s is diff: %f = %f, diff = %f\n", desc, msg, binv, gridv, math.Abs(binv-gridv))
 	}
+}
+
+func TestCompareGridVsEuropeanMC(t *testing.T) {
+	opt := &EuropeanCallOption{EuropeanOption{VanillaOption{100, 1}}}
+	spot := Money(100)
+
+	parameters := PricingParameters{0.2, 0.02}
+
+	grid := GridPricing(parameters)
+	mc := EuropeanMCPricing(parameters)
+
+	compareTwo("Grid vs MC", t, "pricing", float64(grid(opt, spot, 0)), float64(mc(opt, spot, 0)), absCmp(0.05))
+	compareTwo("Grid vs MC", t, "Delta", Delta(grid)(opt, spot, 0), Delta(mc)(opt, spot, 0), absCmp(0.001))
+	compareTwo("Grid vs MC", t, "Gamma", Gamma(grid)(opt, spot, 0), Gamma(mc)(opt, spot, 0), absCmp(0.01))
+	compareTwo("Grid vs MC", t, "Theta", Theta(grid)(opt, spot, 0), Theta(mc)(opt, spot, 0), absCmp(0.05))
+	compareTwo("Grid vs MC", t, "Delta", Rho(BinomialPricing, parameters)(opt, spot, 0), Rho(GridPricing, parameters)(opt, spot, 0), absCmp(0.1))
 }
