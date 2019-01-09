@@ -9,6 +9,18 @@ import (
 )
 
 func main() {
+	run_bond()
+	run_option()
+}
+
+func run_bond() {
+	bond := bond.ZeroCouponBond{1}
+	rate := m.Rate(0.1)
+
+	fmt.Printf("T=%f, r=%f, Price=%f\n", bond.Maturity, rate, bond.Price(0, rate))
+}
+
+func run_option() {
 	// dec := json.NewDecoder(os.Stdin)
 	// enc := json.NewEncoder(os.Stdout)
 	parameters := option.PricingParameters{0.2, 0.02}
