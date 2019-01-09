@@ -1,6 +1,8 @@
 package main
 
 import (
+	"./bond"
+	m "./measures"
 	"./option"
 	"fmt"
 	"reflect"
@@ -41,7 +43,7 @@ func printGreekDiagATM(pricingFun func(parameters option.PricingParameters) opti
 	pricing := pricingFun(pricingParameters)
 
 	fmt.Printf("================= %s ================\n", reflect.TypeOf(opt))
-	spot := option.Money(100)
+	spot := m.Money(100)
 	fmt.Printf("S=%f V(T)=%f\n", float64(spot), opt.Payoff(spot))
 	fmt.Printf("V(0)=%f\n", pricing(opt, spot, 0))
 	fmt.Printf("Delta(0)=%f\n", option.Delta(pricing)(opt, spot, 0))

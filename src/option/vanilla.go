@@ -1,14 +1,16 @@
 package option
 
+import m "../measures"
+
 type VanillaOption struct {
-	S Money
-	T Time
+	S m.Money
+	T m.Time
 }
 
-func (option *VanillaOption) Expiration() Time {
+func (option *VanillaOption) Expiration() m.Time {
 	return option.T
 }
 
-func (option *VanillaOption) Strike() Money {
+func (option *VanillaOption) Strike() m.Money {
 	return option.S
 }

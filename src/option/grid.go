@@ -1,7 +1,9 @@
 package option
 
-func FiniteDifferenceGrid(NAS int, SInf float64) func(option Option, t Time, sigma Return, rf Rate) (S []float64, V [][]float64) {
-	return func(option Option, t Time, sigma Return, rf Rate) (S []float64, V [][]float64) {
+import m "../measures"
+
+func FiniteDifferenceGrid(NAS int, SInf float64) func(option Option, t m.Time, sigma m.Return, rf m.Rate) (S []float64, V [][]float64) {
+	return func(option Option, t m.Time, sigma m.Return, rf m.Rate) (S []float64, V [][]float64) {
 		Vol := float64(sigma)
 		RF := float64(rf)
 
@@ -24,7 +26,7 @@ func initializeBoundaryCondition(V [][]float64, S []float64, dS float64, option 
 	NAS := len(V) - 1
 	for i := 0; i <= NAS; i++ {
 		S[i] = float64(i) * dS
-		V[i][0] = float64(option.Payoff(Money(S[i])))
+		V[i][0] = float64(option.Payoff(m.Money(S[i])))
 	}
 }
 
@@ -48,7 +50,7 @@ func updateGridInteriorAtTime(k int, V [][]float64, S []float64, dS float64, Vol
 
 func updateForEarlyExcerciseAtTime(k int, option Option, V [][]float64, S []float64) {
 	for i := 0; i < len(V); i++ {
-		V[i][k] = float64(option.EarlyExcercise(option.Payoff(Money(S[i])), Money(V[i][k])))
+		V[i][k] = float64(option.EarlyExcercise(option.Payoff(m.Money(S[i])), m.Money(V[i][k])))
 	}
 }
 

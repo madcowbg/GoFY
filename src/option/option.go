@@ -1,37 +1,33 @@
 package option
 
 import (
+	m "../measures"
 	"github.com/phil-mansfield/gotetra/math/interpolate"
 	"math"
 )
 
-type Time float64
-type Money float64
-type Return float64
-type Rate float64
-
-type Pricing func(option Option, spot Money, t Time) Money
-type Greek func(option Option, spot Money, t Time) float64
+type Pricing func(option Option, spot m.Money, t m.Time) m.Money
+type Greek func(option Option, spot m.Money, t m.Time) float64
 
 type Decision interface {
-	EarlyExcercise(spot Money, nonExcercisedValue Money) Money
+	EarlyExcercise(spot m.Money, nonExcercisedValue m.Money) m.Money
 }
 
 type Option interface {
 	Decision
-	Expiration() Time
-	Payoff(spot Money) Money
+	Expiration() m.Time
+	Payoff(spot m.Money) m.Money
 
-	Strike() Money // FIXME deprecated ... does not generalize!
+	Strike() m.Money // FIXME deprecated ... does not generalize!
 }
 
 type PricingParameters struct {
-	Sigma Return
-	R     Rate
+	Sigma m.Return
+	R     m.Rate
 }
 
 func BinomialPricing(parameters PricingParameters) Pricing {
-	return func(option Option, spot Money, t Time) Money {
+	return func(option Option, spot m.Money, t m.Time) m.Money {
 		return BinomialModel(
 			option,
 			spot,
@@ -42,7 +38,7 @@ func BinomialPricing(parameters PricingParameters) Pricing {
 }
 
 func GridPricing(parameters PricingParameters) Pricing {
-	return func(option Option, spot Money, t Time) Money {
+	return func(option Option, spot m.Money, t m.Time) m.Money {
 		SInf := math.Max(2.0*float64(option.Strike()), 1.1*float64(spot))
 		NAS := 200
 
@@ -57,12 +53,12 @@ func GridPricing(parameters PricingParameters) Pricing {
 			V0[i] = V[i][len(V[0])-1]
 		}
 
-		return Money(interpolate.NewLinear(S, V0).Eval(float64(spot)))
+		return m.Money(interpolate.NewLinear(S, V0).Eval(float64(spot)))
 	}
 }
 
 func EuropeanMCPricing(parameters PricingParameters) Pricing {
-	return func(option Option, spot Money, t Time) Money {
+	return func(option Option, spot m.Money, t m.Time) m.Money {
 		return NoEarlyExcerciseMonteCarloModel(100000, 100, -1)(option, spot, t, parameters.Sigma, parameters.R)
 	}
 }
@@ -76,38 +72,38 @@ func diff2nd(f func(x float64) float64, x, d float64) float64 {
 }
 
 func Delta(pricing Pricing) Greek {
-	return func(option Option, spot Money, t Time) float64 {
+	return func(option Option, spot m.Money, t m.Time) float64 {
 		return diff(
-			func(x float64) float64 { return float64(pricing(option, Money(x), t)) },
+			func(x float64) float64 { return float64(pricing(option, m.Money(x), t)) },
 			float64(spot),
 			0.01*float64(spot))
 	}
 }
 
 func Gamma(pricing Pricing) Greek {
-	return func(option Option, spot Money, t Time) float64 {
+	return func(option Option, spot m.Money, t m.Time) float64 {
 		return diff2nd(
-			func(x float64) float64 { return float64(pricing(option, Money(x), t)) },
+			func(x float64) float64 { return float64(pricing(option, m.Money(x), t)) },
 			float64(spot),
 			0.01*float64(spot))
 	}
 }
 
 func Theta(pricing Pricing) Greek {
-	return func(option Option, spot Money, t Time) float64 {
+	return func(option Option, spot m.Money, t m.Time) float64 {
 		return diff(
-			func(x float64) float64 { return float64(pricing(option, spot, Time(x))) },
+			func(x float64) float64 { return float64(pricing(option, spot, m.Time(x))) },
 			float64(t),
 			0.001)
 	}
 }
 
 func Rho(pricingFromParameters func(parameters PricingParameters) Pricing, parameters PricingParameters) Greek {
-	return func(option Option, spot Money, t Time) float64 {
+	return func(option Option, spot m.Money, t m.Time) float64 {
 		return diff(
 			func(r float64) float64 {
 				tweakedParameters := parameters
-				tweakedParameters.R = Rate(r)
+				tweakedParameters.R = m.Rate(r)
 				return float64(pricingFromParameters(tweakedParameters)(option, spot, t))
 			},
 			float64(parameters.R),
