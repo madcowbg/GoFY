@@ -217,3 +217,32 @@ func TestCompareGridVsEuropeanMC(t *testing.T) {
 	compareTwo("Grid vs MC", t, "Theta", Theta(grid)(opt, spot, 0), Theta(mc)(opt, spot, 0), absCmp(0.05))
 	compareTwo("Grid vs MC", t, "Delta", Rho(BinomialPricing, parameters)(opt, spot, 0), Rho(GridPricing, parameters)(opt, spot, 0), absCmp(0.1))
 }
+
+func TestImplyVol(t *testing.T) {
+	opt := &EuropeanCallOption{EuropeanOption{VanillaOption{100, 1}}}
+	spot := m.Money(100)
+	R := m.Rate(0.02)
+
+	prices := []m.Money{6, 5.6, 7, 8}
+	for _, price := range prices {
+		checkVolImplyAtPrice(R, opt, spot, price, t, 1e-4)
+	}
+	extremePrices := []m.Money{1, 20}
+	for _, price := range extremePrices {
+		checkVolImplyAtPrice(R, opt, spot, price, t, 1e-3)
+	}
+}
+
+func checkVolImplyAtPrice(R m.Rate, opt Option, spot m.Money, price m.Money, t *testing.T, tol float64) {
+	implGrid, err := ImplyVol(GridPricing, R)(opt, spot, 0)(price)
+	if err != nil || math.IsNaN(implGrid) {
+		t.Error("failed imply for grid", price, implGrid, err)
+	}
+	implBinomial, err := ImplyVol(BinomialPricing, R)(opt, spot, 0)(price)
+	if err != nil || math.IsNaN(implBinomial) {
+		t.Error("failed imply for binomial", price, implBinomial, err)
+	}
+	if !cmp.Equal(implGrid, implBinomial, absCmp(tol)) {
+		t.Errorf("imply is different at price=%f: grid=%f != binomial=%f\n", price, implGrid, implBinomial)
+	}
+}

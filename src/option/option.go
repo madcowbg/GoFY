@@ -3,6 +3,7 @@ package option
 import (
 	m "../measures"
 	"github.com/phil-mansfield/gotetra/math/interpolate"
+	"gonum.org/v1/gonum/optimize"
 	"math"
 )
 
@@ -108,5 +109,24 @@ func Rho(pricingFromParameters func(parameters PricingParameters) Pricing, param
 			},
 			float64(parameters.R),
 			0.0001)
+	}
+}
+
+func ImplyVol(pricingMethod func(PricingParameters) Pricing, R m.Rate) func(option Option, spot m.Money, t m.Time) func(price m.Money) (float64, error) {
+	return func(option Option, spot m.Money, t m.Time) func(price m.Money) (float64, error) {
+		return func(price m.Money) (float64, error) {
+			problem := optimize.Problem{
+				Func: func(x []float64) float64 {
+					parameters := PricingParameters{Sigma: m.Return(x[0]), R: R}
+					pricing := pricingMethod(parameters)
+					return math.Abs(float64(pricing(option, spot, t) - price))
+				},
+			}
+			result, err := optimize.Minimize(problem, []float64{0.2}, nil, &optimize.NelderMead{})
+			if err != nil {
+				return math.NaN(), err
+			}
+			return result.X[0], nil
+		}
 	}
 }
