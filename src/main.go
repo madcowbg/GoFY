@@ -14,7 +14,7 @@ func main() {
 }
 
 func run_bond() {
-	bond := bond.ZeroCouponBond{1}
+	bond := bond.ZeroCouponBond{bond.Expirable{1}}
 	rate := m.Rate(0.1)
 
 	fmt.Printf("T=%f, r=%f, Price=%f\n", bond.Maturity, rate, bond.Price(0, rate))
