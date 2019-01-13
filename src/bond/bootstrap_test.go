@@ -30,10 +30,31 @@ func TestBootstrap(t *testing.T) {
 		0.026287151064191588, 0.023711418764930856, 0.02577999694006839, 0.029670005525862027, 0.027112858636038743,
 		0.027499992506844165}
 
-	if !cmp.Equal(fwd, expectedFwd, absCmp(1e-8)) {
+	if !cmp.Equal(fwd.Rates, expectedFwd, absCmp(1e-8)) {
 		t.Errorf(
 			"forward rates bootstrapped wrong:\n got %v\n expected %v\n%s\n",
-			fwd, expectedFwd, cmp.Diff(fwd, expectedFwd, absCmp(1e-8)))
+			fwd.Rates, expectedFwd, cmp.Diff(fwd.Rates, expectedFwd, absCmp(1e-8)))
+	}
+
+	dfs := []float64{
+		fwd.DiscountFactor(0.4),
+		fwd.DiscountFactor(ttms[0]),
+		fwd.DiscountFactor(ttms[5]),
+		fwd.DiscountFactor(ttms[10]),
+	}
+	expectedDfs := []float64{0.9902103054069268, 0.9997392562347156, 0.9986703292516028, 0.9974055381135003}
+	if !cmp.Equal(dfs, expectedDfs, absCmp(1e-8)) {
+		t.Errorf("bootstrapped discount factors wrong:\n got %v\n expected %v\n", dfs, expectedDfs)
+	}
+
+	bootsrappedYields := make([]float64, len(yields))
+	expectedYields := make([]float64, len(yields))
+	for i := range ttms {
+		bootsrappedYields[i] = float64(fwd.Yield(ttms[i]))
+		expectedYields[i] = float64(yields[i])
+	}
+	if !cmp.Equal(bootsrappedYields, expectedYields, absCmp(1e-8)) {
+		t.Errorf("bootstrapped yields wrong:\n got %v\n expected %v\n%s\n", bootsrappedYields, expectedYields, cmp.Diff(bootsrappedYields, yields, absCmp(1e-8)))
 	}
 }
 

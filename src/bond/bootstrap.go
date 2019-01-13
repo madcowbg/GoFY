@@ -6,7 +6,45 @@ import (
 	"math"
 )
 
-func BootstrapForwardRates(yields []m.Rate, ttms []m.Time) []m.Rate {
+type FixedForwardRateCurve struct {
+	Maturities []m.Time
+	Rates      []m.Rate
+}
+
+func (curve FixedForwardRateCurve) Yield(t m.Time) m.Rate {
+	df := curve.DiscountFactor(t)
+	return (&ZeroCouponBond{Expirable{t}}).YieldToMaturity(0, m.Money(df))
+}
+
+func (curve FixedForwardRateCurve) DiscountFactor(t m.Time) float64 {
+	if t < 0 {
+		return math.NaN()
+	}
+
+	df := 1.0
+	appliedTime := m.Time(0.0)
+	for i := 0; i < len(curve.Maturities); i++ {
+		if appliedTime >= t {
+			break
+		}
+
+		timeToDiscount := m.Time(math.Min(float64(t), float64(curve.Maturities[i]))) - appliedTime
+		df *= dfFor(curve.Rates[i], timeToDiscount)
+
+		appliedTime += timeToDiscount
+	}
+
+	if appliedTime < t {
+		df *= dfFor(curve.Rates[len(curve.Rates)-1], t-appliedTime)
+	}
+	return df
+}
+
+func dfFor(r m.Rate, t m.Time) float64 {
+	return math.Exp(-float64(r) * float64(t))
+}
+
+func BootstrapForwardRates(yields []m.Rate, ttms []m.Time) FixedForwardRateCurve {
 	if len(yields) != len(ttms) {
 		log.Fatalf("yields and times must have same length! %d != %d\n", len(yields), len(ttms))
 	}
@@ -16,7 +54,10 @@ func BootstrapForwardRates(yields []m.Rate, ttms []m.Time) []m.Rate {
 	for i := 0; i < len(bonds); i++ {
 		bonds[i] = &ZeroCouponBond{Expirable{ttms[i]}}
 	}
-	return fwdRatesFromZCBonds(yields, bonds, t0)
+
+	return FixedForwardRateCurve{
+		Maturities: ttms,
+		Rates:      fwdRatesFromZCBonds(yields, bonds, t0)}
 }
 
 func fwdRatesFromZCBonds(yields []m.Rate, bonds []*ZeroCouponBond, t0 m.Time) []m.Rate {
