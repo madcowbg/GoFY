@@ -35,5 +35,90 @@ func TestZeroCouponBondPriceAndYield(t *testing.T) {
 	if !cmp.Equal(prices, expectedPrices, absCmp(1e-14)) {
 		t.Errorf("wrong bond yields:\n got %v\n expected %v\n", yields, expectedYields)
 	}
+}
 
+func compareSingleCashflow(tol float64) cmp.Option {
+	return cmp.Comparer(func(x, y Cashflow) bool {
+		return math.Abs(float64(x.Amount-y.Amount)) < tol && math.Abs(float64(x.Time-y.Time)) < tol
+	})
+}
+
+func TestCouponsAndMaturity(t *testing.T) {
+	coupon := FixedCouponTerm{Frequency: 2, PerAnnum: 0.05}
+
+	nextCoupons := []m.Time{
+		coupon.NextCoupon(0, 0),
+		coupon.NextCoupon(0, -0.0001),
+		coupon.NextCoupon(0, 0.0001),
+	}
+	expectedNextCoupons := []m.Time{0, 0, 0.5}
+	if !cmp.Equal(nextCoupons, expectedNextCoupons, absCmp(1e-14)) {
+		t.Errorf("wrong next coupons:\n got %v\n expected %v\n", nextCoupons, expectedNextCoupons)
+	}
+
+	bond := FixedCouponBond{
+		Expirable: Expirable{Maturity: 3},
+		IssueTime: 0,
+		Coupon:    coupon}
+
+	nextCashflows := [][]Cashflow{
+		bond.RemainingCashflows(-1),
+		bond.RemainingCashflows(0.001),
+		bond.RemainingCashflows(0.499999),
+		bond.RemainingCashflows(0.5),
+		bond.RemainingCashflows(0.500001),
+		bond.RemainingCashflows(2.999999),
+		bond.RemainingCashflows(3),
+		bond.RemainingCashflows(3.000001),
+	}
+
+	expectedNextCashflows := [][]Cashflow{
+		{
+			{Time: 0, Amount: 0.025},
+			{Time: 0.5, Amount: 0.025},
+			{Time: 1, Amount: 0.025},
+			{Time: 1.5, Amount: 0.025},
+			{Time: 2, Amount: 0.025},
+			{Time: 2.5, Amount: 0.025},
+			{Time: 3, Amount: 1},
+		}, {
+			{Time: 0.5, Amount: 0.025},
+			{Time: 1, Amount: 0.025},
+			{Time: 1.5, Amount: 0.025},
+			{Time: 2, Amount: 0.025},
+			{Time: 2.5, Amount: 0.025},
+			{Time: 3, Amount: 1},
+		}, {
+			{Time: 0.5, Amount: 0.025},
+			{Time: 1, Amount: 0.025},
+			{Time: 1.5, Amount: 0.025},
+			{Time: 2, Amount: 0.025},
+			{Time: 2.5, Amount: 0.025},
+			{Time: 3, Amount: 1},
+		}, {
+			{Time: 0.5, Amount: 0.025},
+			{Time: 1, Amount: 0.025},
+			{Time: 1.5, Amount: 0.025},
+			{Time: 2, Amount: 0.025},
+			{Time: 2.5, Amount: 0.025},
+			{Time: 3, Amount: 1},
+		}, {
+			{Time: 1, Amount: 0.025},
+			{Time: 1.5, Amount: 0.025},
+			{Time: 2, Amount: 0.025},
+			{Time: 2.5, Amount: 0.025},
+			{Time: 3, Amount: 1}},
+		{
+			{Time: 3, Amount: 1},
+		}, {
+			{Time: 3, Amount: 1},
+		}, {},
+	}
+	if !cmp.Equal(nextCashflows, expectedNextCashflows, compareSingleCashflow(1e-12)) {
+		t.Errorf(
+			"wrong next cashflows:\n got %v\n expected %v\n%s",
+			nextCashflows,
+			expectedNextCashflows,
+			cmp.Diff(nextCashflows, expectedNextCashflows, compareSingleCashflow(1e-12)))
+	}
 }
