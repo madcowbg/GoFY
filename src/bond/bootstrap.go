@@ -2,21 +2,23 @@ package bond
 
 import (
 	m "../measures"
+	"fmt"
 	"log"
 	"math"
 )
+
+type DiscountFactor func(t m.Time) float64
 
 type FixedForwardRateCurve struct {
 	Maturities []m.Time
 	Rates      []m.Rate
 }
 
-func (curve FixedForwardRateCurve) Yield(t m.Time) m.Rate {
-	df := curve.DiscountFactor(t)
-	return (&ZeroCouponBond{Expirable{t}}).YieldToMaturity(0, m.Money(df))
+func Yield(discountFactor DiscountFactor, t m.Time) m.Rate {
+	return (&ZeroCouponBond{Expirable{t}}).YieldToMaturity(0, m.Money(discountFactor(t)))
 }
 
-func (curve FixedForwardRateCurve) DiscountFactor(t m.Time) float64 {
+func (curve *FixedForwardRateCurve) DiscountFactor(t m.Time) float64 {
 	if t < 0 {
 		return math.NaN()
 	}
@@ -40,11 +42,28 @@ func (curve FixedForwardRateCurve) DiscountFactor(t m.Time) float64 {
 	return df
 }
 
+func AugmentedCurve(curve *FixedForwardRateCurve, nextT m.Time, fwdRate m.Rate) (*FixedForwardRateCurve, error) {
+	nPts := len(curve.Maturities)
+	lastMaturity := curve.Maturities[nPts-1]
+	if lastMaturity >= nextT {
+		return nil, fmt.Errorf("cannot augment curve with point that is after last maturity! %f >= %f", lastMaturity, nextT)
+	}
+	maturities := make([]m.Time, nPts+1)
+	copy(maturities, curve.Maturities)
+	maturities[nPts] = nextT
+
+	rates := make([]m.Rate, nPts+1)
+	copy(rates, curve.Rates)
+	rates[nPts] = fwdRate
+
+	return &FixedForwardRateCurve{Maturities: maturities, Rates: rates}, nil
+}
+
 func dfFor(r m.Rate, t m.Time) float64 {
 	return math.Exp(-float64(r) * float64(t))
 }
 
-func BootstrapForwardRates(yields []m.Rate, ttms []m.Time) FixedForwardRateCurve {
+func BootstrapForwardRates(yields []m.Rate, ttms []m.Time) *FixedForwardRateCurve {
 	if len(yields) != len(ttms) {
 		log.Fatalf("yields and times must have same length! %d != %d\n", len(yields), len(ttms))
 	}
@@ -55,7 +74,7 @@ func BootstrapForwardRates(yields []m.Rate, ttms []m.Time) FixedForwardRateCurve
 		bonds[i] = &ZeroCouponBond{Expirable{ttms[i]}}
 	}
 
-	return FixedForwardRateCurve{
+	return &FixedForwardRateCurve{
 		Maturities: ttms,
 		Rates:      fwdRatesFromZCBonds(yields, bonds, t0)}
 }

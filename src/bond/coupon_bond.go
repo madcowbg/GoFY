@@ -12,7 +12,8 @@ type FixedCouponTerm struct {
 }
 
 func (coupon FixedCouponTerm) Cashflows(start m.Time, to m.Time) []Cashflow {
-	cnt := int(math.Ceil(float64(to-start) * coupon.Frequency))
+	approximateCount := float64(to-start) * coupon.Frequency
+	cnt := int(math.Ceil(approximateCount - EPS))
 	result := make([]Cashflow, cnt+1)
 	for i := 0; i <= cnt; i++ {
 		result[i] = Cashflow{
@@ -22,13 +23,13 @@ func (coupon FixedCouponTerm) Cashflows(start m.Time, to m.Time) []Cashflow {
 	return result
 }
 
-func (coupon FixedCouponTerm) NextCoupon(startTime m.Time, t m.Time) m.Time {
-	if t <= startTime {
-		return startTime
+func (coupon FixedCouponTerm) NextCoupon(issueTime m.Time, t m.Time) m.Time {
+	if t <= issueTime {
+		return issueTime + m.Time(1/coupon.Frequency)
 	}
 
-	cnt := math.Ceil(float64(t-startTime) * coupon.Frequency)
-	return startTime + m.Time(cnt/coupon.Frequency)
+	cnt := math.Ceil(float64(t-issueTime) * coupon.Frequency)
+	return issueTime + m.Time(cnt/coupon.Frequency)
 }
 
 type FixedCouponBond struct {
@@ -45,7 +46,7 @@ func (bond FixedCouponBond) RemainingCashflows(t m.Time) []Cashflow {
 	}
 
 	if t <= bond.IssueTime {
-		t = bond.IssueTime + EPS
+		t = bond.IssueTime
 	}
 
 	nextCoupon := bond.Coupon.NextCoupon(bond.IssueTime, t)
@@ -88,4 +89,15 @@ func (bond *FixedCouponBond) YieldToMaturity(t m.Time, price m.Money) m.Rate {
 		return m.Rate(math.NaN())
 	}
 	return m.Rate(result.X[0])
+}
+
+func (bond *FixedCouponBond) AccruedInterest(t m.Time) m.Money {
+	if t <= bond.IssueTime {
+		return 0
+	}
+
+	timeToNextCoupon := bond.Coupon.NextCoupon(bond.IssueTime, t) - t
+	timeBetweenCoupons := 1 / float64(bond.Coupon.Frequency)
+
+	return m.Money(timeBetweenCoupons-float64(timeToNextCoupon)) * bond.Coupon.PerAnnum
 }
