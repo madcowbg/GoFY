@@ -2,6 +2,7 @@ package bond
 
 import (
 	m "../measures"
+	"gonum.org/v1/gonum/diff/fd"
 	"math"
 )
 
@@ -18,4 +19,15 @@ type Expirable struct {
 
 func (expirable Expirable) TimeToExpiration(t m.Time) m.Time {
 	return m.Time(math.Max(0, float64(expirable.Maturity-t)))
+}
+
+func Duration(bond Bond, t m.Time, rate m.Rate) float64 {
+	return fd.Derivative(
+		func(yield float64) float64 { return float64(bond.Price(t, m.Rate(yield))) },
+		float64(rate),
+		&fd.Settings{Formula: fd.Central})
+}
+
+func MacaulayDuration(bond Bond, t m.Time, rate m.Rate) float64 {
+	return -Duration(bond, t, rate) / float64(bond.Price(t, rate))
 }

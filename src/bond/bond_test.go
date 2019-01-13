@@ -157,3 +157,58 @@ func TestFixedCouponBondPriceAndYield(t *testing.T) {
 			bondYields, expectedBondYields, cmp.Diff(bondYields, expectedBondYields, absCmp(1e-5)))
 	}
 }
+
+func TestZeroBondDurations(t *testing.T) {
+	zeroBond := &ZeroCouponBond{Expirable{Maturity: 2}}
+
+	zeroBondDuration := []float64{
+		Duration(zeroBond, 0, 0.02),
+		Duration(zeroBond, 1, 0.05),
+		Duration(zeroBond, 2, 0.05),
+		Duration(zeroBond, 2.0001, 0.05),
+	}
+	expectedZeroBondDuration := []float64{-1.9215788783499832, -0.9512294245062058, 0, 0}
+	if !cmp.Equal(zeroBondDuration, expectedZeroBondDuration, absCmp(1e-10)) {
+		t.Errorf("wrong zero bond duration:\n got %v\n expected %v\n", zeroBondDuration, expectedZeroBondDuration)
+	}
+
+	zeroBondMacaulayDuration := []float64{
+		MacaulayDuration(zeroBond, 0, 0.02),
+		MacaulayDuration(zeroBond, 1, 0.05),
+		MacaulayDuration(zeroBond, 2, 0.05),
+		MacaulayDuration(zeroBond, 2.0001, 0.05),
+	}
+	expectedZeroBondMacaulayDuration := []float64{2, 1, 0, 0}
+	if !cmp.Equal(zeroBondMacaulayDuration, expectedZeroBondMacaulayDuration, absCmp(1e-10)) {
+		t.Errorf("wrong zero bond macaulay duration:\n got %v\n expected %v\n", zeroBondMacaulayDuration, expectedZeroBondMacaulayDuration)
+	}
+}
+func TestFixedBondDurations(t *testing.T) {
+	var fixedBond Bond = &FixedCouponBond{
+		Expirable: Expirable{Maturity: 3},
+		IssueTime: 0,
+		Coupon:    FixedCouponTerm{Frequency: 2, PerAnnum: 0.05}}
+
+	fixedBondDuration := []float64{
+		Duration(fixedBond, 0, 0.02),
+		Duration(fixedBond, 1, 0.05),
+		Duration(fixedBond, 2, 0.05),
+		Duration(fixedBond, 3.0001, 0.05),
+	}
+
+	expectedFixedBondDuration := []float64{-3.006057209153923, -1.880437326369962, -0.9634207984166032, 0}
+	if !cmp.Equal(fixedBondDuration, expectedFixedBondDuration, absCmp(1e-10)) {
+		t.Errorf("wrong fixed bond duration:\n got %v\n expected %v\n", fixedBondDuration, expectedFixedBondDuration)
+	}
+
+	fixedBondMacaulayDuration := []float64{
+		MacaulayDuration(fixedBond, 0, 0.02),
+		MacaulayDuration(fixedBond, 1, 0.05),
+		MacaulayDuration(fixedBond, 2, 0.05),
+		MacaulayDuration(fixedBond, 3.0001, 0.05),
+	}
+	expectedFixedBondMacaulayDuration := []float64{2.762711105506718, 1.8781938452193596, 0.9628313797150014, math.NaN()}
+	if !cmp.Equal(fixedBondMacaulayDuration, expectedFixedBondMacaulayDuration, absCmp(1e-10)) {
+		t.Errorf("wrong fixed bond macaulay duration:\n got %v\n expected %v\n", fixedBondMacaulayDuration, expectedFixedBondMacaulayDuration)
+	}
+}
