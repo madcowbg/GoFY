@@ -171,3 +171,20 @@ func AugmentedCurve(curve *FixedForwardRateCurve, nextT m.Time, fwdRate m.Rate) 
 
 	return &FixedForwardRateCurve{Maturities: maturities, Rates: rates}, nil
 }
+
+type FixedZeroCouponCurve struct {
+	Maturities []m.Time
+	Rates      []m.Rate
+}
+
+func (curve *FixedForwardRateCurve) AsZeroCouponCurve() *FixedZeroCouponCurve {
+	rates := make([]m.Rate, len(curve.Maturities))
+	for i, ttm := range curve.Maturities {
+		bond := &ZeroCouponBond{Expirable{ttm}}
+		rates[i] = bond.YieldToMaturity(0, bond.PriceByDF(0, curve.DiscountFactor))
+	}
+	return &FixedZeroCouponCurve{
+		Maturities: curve.Maturities,
+		Rates:      rates,
+	}
+}
