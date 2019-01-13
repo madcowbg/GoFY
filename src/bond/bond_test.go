@@ -9,7 +9,7 @@ import (
 
 func absCmp(tol float64) cmp.Option {
 	return cmp.Comparer(func(x, y float64) bool {
-		return math.Abs(x-y) < tol
+		return (math.IsNaN(x) && math.IsNaN(y)) || math.Abs(x-y) < tol
 	})
 }
 
@@ -120,5 +120,40 @@ func TestCouponsAndMaturity(t *testing.T) {
 			nextCashflows,
 			expectedNextCashflows,
 			cmp.Diff(nextCashflows, expectedNextCashflows, compareSingleCashflow(1e-12)))
+	}
+}
+
+func TestFixedCouponBondPriceAndYield(t *testing.T) {
+	var fixedBond Bond = &FixedCouponBond{
+		Expirable: Expirable{Maturity: 3},
+		IssueTime: 0,
+		Coupon:    FixedCouponTerm{Frequency: 2, PerAnnum: 0.05}}
+
+	bondPrices := []m.Money{
+		fixedBond.Price(-1, 0.02),
+		fixedBond.Price(0, 0.02),
+		fixedBond.Price(1, 0.05),
+		fixedBond.Price(3, 0.07),
+		fixedBond.Price(3.1, 0.02),
+	}
+	expectedFixedBondPrices := []m.Money{1.0665368819865981, 1.0880823561906854, 1.0011944886073996, 1, 0}
+
+	if !cmp.Equal(bondPrices, expectedFixedBondPrices, absCmp(1e-14)) {
+		t.Errorf("wrong fixed coupon bond prices:\n got %v\n expected %v\n", bondPrices, expectedFixedBondPrices)
+	}
+
+	bondYields := []float64{
+		float64(fixedBond.YieldToMaturity(0, 0.8)),
+		float64(fixedBond.YieldToMaturity(0, 1.0)),
+		float64(fixedBond.YieldToMaturity(0, 1.4)),
+		float64(fixedBond.YieldToMaturity(-5, 1.4)),
+		float64(fixedBond.YieldToMaturity(5, 1.4)),
+	}
+
+	expectedBondYields := []float64{0.1324619, 0.050635, -0.070590, -0.025293, math.NaN()}
+	if !cmp.Equal(bondYields, expectedBondYields, absCmp(1e-5)) {
+		t.Errorf(
+			"wrong fixed coupon bond yields:\n got %v\n expected %v\n%s\n",
+			bondYields, expectedBondYields, cmp.Diff(bondYields, expectedBondYields, absCmp(1e-5)))
 	}
 }
