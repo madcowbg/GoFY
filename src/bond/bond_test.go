@@ -47,9 +47,9 @@ func TestCouponsAndMaturity(t *testing.T) {
 	coupon := FixedCouponTerm{Frequency: 2, PerAnnum: 0.05}
 
 	nextCoupons := []m.Time{
-		coupon.NextCoupon(0, 0),
-		coupon.NextCoupon(0, -0.0001),
-		coupon.NextCoupon(0, 0.0001),
+		coupon.NextCoupon(-0.5, 0),
+		coupon.NextCoupon(-0.5, -0.0001),
+		coupon.NextCoupon(-0.5, 0.0001),
 	}
 	expectedNextCoupons := []m.Time{0, 0, 0.5}
 	if !cmp.Equal(nextCoupons, expectedNextCoupons, absCmp(1e-14)) {

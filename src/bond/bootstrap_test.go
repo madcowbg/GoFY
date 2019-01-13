@@ -133,6 +133,18 @@ func TestBootstrapNotes(t *testing.T) {
 			priceByYield, dirtyPrices, cmp.Diff(priceByYield, dirtyPrices, absCmp(1e-2)))
 	}
 
+	yieldByPrice := make([]float64, len(bonds))
+	yield := make([]float64, len(bonds))
+	for i := range bonds {
+		yieldByPrice[i] = float64(bonds[i].YieldToMaturity(t0, m.Money(dirtyPrices[i])))
+		yield[i] = float64(quotes[i].yield)
+	}
+	if !cmp.Equal(yieldByPrice, yield, absCmp(0.006)) {
+		t.Errorf(
+			"bootstrapped yields wrong:\n by yields %v\n quoted dirty %v\n%s\n",
+			yieldByPrice, yield, cmp.Diff(yieldByPrice, yield, absCmp(0.006)))
+	}
+
 	//for i := range bonds {
 	//	fmt.Printf(
 	//		"%f\t%f\t%f\t%f\t%f\t%f\t%v\n",
