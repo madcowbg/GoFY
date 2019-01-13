@@ -115,7 +115,7 @@ func TestBootstrapNotes(t *testing.T) {
 
 	// fmt.Println(t0)
 	quotes := demoNotesQuotes(t.Error)
-	bonds := bondsFromQuotes(yearStart, quotes)
+	bonds, yields := bondsFromQuotes(yearStart, quotes)
 
 	dirtyPrices := make([]float64, len(bonds))
 	for i := range bonds {
@@ -134,15 +134,15 @@ func TestBootstrapNotes(t *testing.T) {
 	}
 
 	yieldByPrice := make([]float64, len(bonds))
-	yield := make([]float64, len(bonds))
+	quotedYield := make([]float64, len(bonds))
 	for i := range bonds {
 		yieldByPrice[i] = float64(bonds[i].YieldToMaturity(t0, m.Money(dirtyPrices[i])))
-		yield[i] = float64(quotes[i].yield)
+		quotedYield[i] = float64(quotes[i].yield)
 	}
-	if !cmp.Equal(yieldByPrice, yield, absCmp(0.006)) {
+	if !cmp.Equal(yieldByPrice, quotedYield, absCmp(0.006)) {
 		t.Errorf(
 			"bootstrapped yields wrong:\n by yields %v\n quoted dirty %v\n%s\n",
-			yieldByPrice, yield, cmp.Diff(yieldByPrice, yield, absCmp(0.006)))
+			yieldByPrice, quotedYield, cmp.Diff(yieldByPrice, quotedYield, absCmp(0.006)))
 	}
 
 	//for i := range bonds {
@@ -150,28 +150,33 @@ func TestBootstrapNotes(t *testing.T) {
 	//		"%f\t%f\t%f\t%f\t%f\t%f\t%v\n",
 	//		quotes[i].price,
 	//		dirtyPrices[i],
-	//		bonds[i].Price(t0, quotes[i].yield),
-	//		quotes[i].yield,
+	//		bonds[i].Price(t0, quotes[i].quotedYield),
+	//		quotes[i].quotedYield,
 	//		bonds[i].YieldToMaturity(t0, m.Money(dirtyPrices[i])),
 	//		bonds[i].YieldToMaturity(t0, quotes[i].price),
 	//		bonds[i].RemainingCashflows(t0),
 	//	)
 	//}
+
+	BootstrapForwardRatesFromFixedCoupon(yields, bonds)
+	//fmt.Printf("%v\n", curve)
 }
 
-func bondsFromQuotes(yearStart time.Time, quotes []WSJUSNoteQuote) []*FixedCouponBond {
-	result := make([]*FixedCouponBond, len(quotes))
-	for i := range result {
+func bondsFromQuotes(yearStart time.Time, quotes []WSJUSNoteQuote) ([]*FixedCouponBond, []m.Rate) {
+	bonds := make([]*FixedCouponBond, len(quotes))
+	yields := make([]m.Rate, len(quotes))
+	for i := range bonds {
 		ttm := m.Time(daysBetween(yearStart, quotes[i].maturity) / 365.0)
-		result[i] = &FixedCouponBond{
+		bonds[i] = &FixedCouponBond{
 			Expirable: Expirable{ttm},
 			IssueTime: ttm - m.Time(math.Ceil(float64(ttm))),
 			Coupon: FixedCouponTerm{
 				Frequency: 2.0, // semiannual
 				PerAnnum:  quotes[i].coupon,
 			}}
+		yields[i] = quotes[i].yield
 	}
-	return result
+	return bonds, yields
 }
 
 type WSJUSNoteQuote struct {

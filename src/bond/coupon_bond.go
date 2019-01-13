@@ -74,6 +74,14 @@ func (bond *FixedCouponBond) Price(t m.Time, rate m.Rate) m.Money {
 	return price
 }
 
+func (bond FixedCouponBond) PriceByDF(t m.Time, df DiscountFactor) m.Money {
+	price := m.Money(0.0)
+	for _, cashflow := range bond.RemainingCashflows(t) {
+		price += cashflow.PriceByDF(t, df)
+	}
+	return price
+}
+
 func (bond *FixedCouponBond) YieldToMaturity(t m.Time, price m.Money) m.Rate {
 	if t > bond.Maturity {
 		return m.Rate(math.NaN())
