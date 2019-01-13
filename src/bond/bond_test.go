@@ -74,12 +74,12 @@ func TestCouponsAndMaturity(t *testing.T) {
 
 	expectedNextCashflows := [][]Cashflow{
 		{
-			{Time: 0, Amount: 0.025},
 			{Time: 0.5, Amount: 0.025},
 			{Time: 1, Amount: 0.025},
 			{Time: 1.5, Amount: 0.025},
 			{Time: 2, Amount: 0.025},
 			{Time: 2.5, Amount: 0.025},
+			{Time: 3, Amount: 0.025},
 			{Time: 3, Amount: 1},
 		}, {
 			{Time: 0.5, Amount: 0.025},
@@ -87,6 +87,7 @@ func TestCouponsAndMaturity(t *testing.T) {
 			{Time: 1.5, Amount: 0.025},
 			{Time: 2, Amount: 0.025},
 			{Time: 2.5, Amount: 0.025},
+			{Time: 3, Amount: 0.025},
 			{Time: 3, Amount: 1},
 		}, {
 			{Time: 0.5, Amount: 0.025},
@@ -94,6 +95,7 @@ func TestCouponsAndMaturity(t *testing.T) {
 			{Time: 1.5, Amount: 0.025},
 			{Time: 2, Amount: 0.025},
 			{Time: 2.5, Amount: 0.025},
+			{Time: 3, Amount: 0.025},
 			{Time: 3, Amount: 1},
 		}, {
 			{Time: 0.5, Amount: 0.025},
@@ -101,16 +103,20 @@ func TestCouponsAndMaturity(t *testing.T) {
 			{Time: 1.5, Amount: 0.025},
 			{Time: 2, Amount: 0.025},
 			{Time: 2.5, Amount: 0.025},
+			{Time: 3, Amount: 0.025},
 			{Time: 3, Amount: 1},
 		}, {
 			{Time: 1, Amount: 0.025},
 			{Time: 1.5, Amount: 0.025},
 			{Time: 2, Amount: 0.025},
 			{Time: 2.5, Amount: 0.025},
+			{Time: 3, Amount: 0.025},
 			{Time: 3, Amount: 1}},
 		{
+			{Time: 3, Amount: 0.025},
 			{Time: 3, Amount: 1},
 		}, {
+			{Time: 3, Amount: 0.025},
 			{Time: 3, Amount: 1},
 		}, {},
 	}
@@ -136,7 +142,7 @@ func TestFixedCouponBondPriceAndYield(t *testing.T) {
 		fixedBond.Price(3, 0.07),
 		fixedBond.Price(3.1, 0.02),
 	}
-	expectedFixedBondPrices := []m.Money{1.0665368819865981, 1.0880823561906854, 1.0011944886073996, 1, 0}
+	expectedFixedBondPrices := []m.Money{1.0651098238135952, 1.0866264695302916, 1.0238154240582986, 1.025, 0}
 
 	if !cmp.Equal(bondPrices, expectedFixedBondPrices, absCmp(1e-14)) {
 		t.Errorf("wrong fixed coupon bond prices:\n got %v\n expected %v\n", bondPrices, expectedFixedBondPrices)
@@ -150,7 +156,7 @@ func TestFixedCouponBondPriceAndYield(t *testing.T) {
 		float64(fixedBond.YieldToMaturity(5, 1.4)),
 	}
 
-	expectedBondYields := []float64{0.1324619, 0.050635, -0.070590, -0.025293, math.NaN()}
+	expectedBondYields := []float64{0.128779276, 0.049385225, -0.06911814, -0.02508956, math.NaN()}
 	if !cmp.Equal(bondYields, expectedBondYields, absCmp(1e-5)) {
 		t.Errorf(
 			"wrong fixed coupon bond yields:\n got %v\n expected %v\n%s\n",
@@ -183,6 +189,7 @@ func TestZeroBondDurations(t *testing.T) {
 		t.Errorf("wrong zero bond macaulay duration:\n got %v\n expected %v\n", zeroBondMacaulayDuration, expectedZeroBondMacaulayDuration)
 	}
 }
+
 func TestFixedBondDurations(t *testing.T) {
 	var fixedBond Bond = &FixedCouponBond{
 		Expirable: Expirable{Maturity: 3},
@@ -196,8 +203,8 @@ func TestFixedBondDurations(t *testing.T) {
 		Duration(fixedBond, 3.0001, 0.05),
 	}
 
-	expectedFixedBondDuration := []float64{-3.006057209153923, -1.880437326369962, -0.9634207984166032, 0}
-	if !cmp.Equal(fixedBondDuration, expectedFixedBondDuration, absCmp(1e-10)) {
+	expectedFixedBondDuration := []float64{-3.0766895491, -1.925679197, -0.987201534, 0}
+	if !cmp.Equal(fixedBondDuration, expectedFixedBondDuration, absCmp(1e-7)) {
 		t.Errorf("wrong fixed bond duration:\n got %v\n expected %v\n", fixedBondDuration, expectedFixedBondDuration)
 	}
 
@@ -207,8 +214,47 @@ func TestFixedBondDurations(t *testing.T) {
 		MacaulayDuration(fixedBond, 2, 0.05),
 		MacaulayDuration(fixedBond, 3.0001, 0.05),
 	}
-	expectedFixedBondMacaulayDuration := []float64{2.762711105506718, 1.8781938452193596, 0.9628313797150014, math.NaN()}
-	if !cmp.Equal(fixedBondMacaulayDuration, expectedFixedBondMacaulayDuration, absCmp(1e-10)) {
+	expectedFixedBondMacaulayDuration := []float64{2.83141413, 1.88088512, 0.9636942294, math.NaN()}
+	if !cmp.Equal(fixedBondMacaulayDuration, expectedFixedBondMacaulayDuration, absCmp(1e-7)) {
 		t.Errorf("wrong fixed bond macaulay duration:\n got %v\n expected %v\n", fixedBondMacaulayDuration, expectedFixedBondMacaulayDuration)
 	}
+}
+
+func TestFixedBondConvexity(t *testing.T) {
+	var fixedBond Bond = &FixedCouponBond{
+		Expirable: Expirable{Maturity: 3},
+		IssueTime: 0,
+		Coupon:    FixedCouponTerm{Frequency: 2, PerAnnum: 0.05}}
+
+	fixedBondConvexity := []float64{
+		Convexity(fixedBond, 0, 0.02),
+		Convexity(fixedBond, 1, 0.05),
+		Convexity(fixedBond, 2, 0.05),
+		Convexity(fixedBond, 3.0001, 0.05),
+	}
+
+	expectedFixedBondConvexity := []float64{8.298865349, 3.70369043, 0.95774368, math.NaN()}
+	if !cmp.Equal(fixedBondConvexity, expectedFixedBondConvexity, absCmp(1e-7)) {
+		t.Errorf("wrong fixed bond convexity:\n got %v\n expected %v\n", fixedBondConvexity, expectedFixedBondConvexity)
+	}
+}
+
+func assertAlmostEqual(t *testing.T, a, b float64) {
+	if math.Abs(a-b) > 1e-4 {
+		t.Fatalf("%f != %f", a, b)
+	}
+}
+
+func TestExactFixedBondAnalytics(t *testing.T) {
+	var bond = &FixedCouponBond{
+		Expirable: Expirable{Maturity: 10},
+		IssueTime: 0,
+		Coupon:    FixedCouponTerm{Frequency: 2, PerAnnum: 0.04}}
+
+	yield := bond.YieldToMaturity(0, 0.921)
+
+	assertAlmostEqual(t, float64(bond.YieldToMaturity(0, 0.921)), 0.049524)
+	assertAlmostEqual(t, float64(bond.Price(0, yield)), 0.921000)
+	assertAlmostEqual(t, float64(MacaulayDuration(bond, 0, yield)), 8.254376)
+	assertAlmostEqual(t, float64(Convexity(bond, 0, yield)), 76.872812)
 }

@@ -31,3 +31,14 @@ func Duration(bond Bond, t m.Time, rate m.Rate) float64 {
 func MacaulayDuration(bond Bond, t m.Time, rate m.Rate) float64 {
 	return -Duration(bond, t, rate) / float64(bond.Price(t, rate))
 }
+
+func DollarConvexity(bond Bond, t m.Time, rate m.Rate) float64 {
+	return fd.Derivative(
+		func(yield float64) float64 { return float64(bond.Price(t, m.Rate(yield))) },
+		float64(rate),
+		&fd.Settings{Formula: fd.Central2nd})
+}
+
+func Convexity(bond Bond, t m.Time, rate m.Rate) float64 {
+	return DollarConvexity(bond, t, rate) / float64(bond.Price(t, rate))
+}

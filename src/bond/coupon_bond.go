@@ -13,8 +13,8 @@ type FixedCouponTerm struct {
 
 func (coupon FixedCouponTerm) Cashflows(start m.Time, to m.Time) []Cashflow {
 	cnt := int(math.Ceil(float64(to-start) * coupon.Frequency))
-	result := make([]Cashflow, cnt)
-	for i := 0; i < cnt; i++ {
+	result := make([]Cashflow, cnt+1)
+	for i := 0; i <= cnt; i++ {
 		result[i] = Cashflow{
 			Time:   start + m.Time(float64(i)/coupon.Frequency),
 			Amount: coupon.PerAnnum / m.Money(coupon.Frequency)}
@@ -37,13 +37,15 @@ type FixedCouponBond struct {
 	Coupon    FixedCouponTerm
 }
 
+const EPS = 1e-10
+
 func (bond FixedCouponBond) RemainingCashflows(t m.Time) []Cashflow {
 	if t > bond.Maturity {
 		return []Cashflow{}
 	}
 
-	if t < bond.IssueTime {
-		t = bond.IssueTime
+	if t <= bond.IssueTime {
+		t = bond.IssueTime + EPS
 	}
 
 	nextCoupon := bond.Coupon.NextCoupon(bond.IssueTime, t)
