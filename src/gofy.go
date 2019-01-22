@@ -3,6 +3,7 @@ package main
 import "C"
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 )
 import (
@@ -121,6 +122,61 @@ func calculateOptionAnalytics(opt o.Option, parameters o.PricingParameters, spot
 		Theta: o.Theta(pricing)(opt, spot, t),
 		Rho:   o.Rho(o.GridPricing, parameters)(opt, spot, t),
 	}
+}
+
+type ImpliedVolAnalytics struct {
+	Analytics  SimpleAnalytics
+	ImpliedVol m.Return
+}
+
+//export implyVol
+func implyVol(instrumentType string, termsAndConditions string, StateOfWorldJSON string, optionPrice float64) *C.char {
+	var world StateOfWorld
+	json.Unmarshal([]byte(StateOfWorldJSON), &world)
+
+	switch InstrumentType(instrumentType) {
+	case Option:
+		{
+			var optionTnC OptionTnC
+
+			err := json.Unmarshal([]byte(termsAndConditions), &optionTnC)
+			if err != nil {
+				return C.CString(fmt.Sprintf("bad T&C: %s", termsAndConditions))
+			}
+			opt := readOptionType(optionTnC)
+
+			analytics, error := calculateOptionImplyVol(opt, world.Parameters, world.Spot, world.Time, m.Money(optionPrice))
+			if error != nil {
+				return C.CString(fmt.Sprint(error))
+			}
+
+			res, error := json.Marshal(*analytics)
+			if error != nil {
+				return C.CString(fmt.Sprint(error))
+			}
+
+			return C.CString(string(res))
+		}
+	default:
+		{
+			log.Fatalf("invalid instrument type: %s", instrumentType)
+		}
+	}
+	return C.CString("BAD CALL!")
+}
+
+func calculateOptionImplyVol(option o.Option, parameters o.PricingParameters, spot m.Money, t m.Time, optionPrice m.Money) (*ImpliedVolAnalytics, error) {
+	impliedVol, err := o.ImplyVol(o.BinomialPricing, parameters.R)(option, spot, t)(optionPrice)
+	if err != nil {
+		return nil, err
+	}
+
+	newParameters := o.PricingParameters{R: parameters.R, Sigma: m.Return(impliedVol)}
+
+	return &ImpliedVolAnalytics{
+		Analytics:  calculateOptionAnalytics(option, newParameters, spot, t),
+		ImpliedVol: m.Return(impliedVol),
+	}, nil
 }
 
 func main() {

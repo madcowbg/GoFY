@@ -122,7 +122,7 @@ func ImplyVol(pricingMethod func(PricingParameters) Pricing, R m.Rate) func(opti
 					return math.Abs(float64(pricing(option, spot, t) - price))
 				},
 			}
-			result, err := optimize.Minimize(problem, []float64{0.2}, nil, &optimize.NelderMead{})
+			result, err := optimize.Minimize(problem, []float64{0.2}, nil, nil)
 			if err != nil {
 				return math.NaN(), err
 			}
