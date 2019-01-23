@@ -1,6 +1,8 @@
 package option
 
-import m "../measures"
+import (
+	m "../measures"
+)
 
 func FiniteDifferenceGrid(NAS int, SInf float64) func(option Option, t m.Time, sigma m.Return, rf m.Rate) (S []float64, V [][]float64) {
 	return func(option Option, t m.Time, sigma m.Return, rf m.Rate) (S []float64, V [][]float64) {

@@ -40,6 +40,10 @@ func BinomialPricing(parameters PricingParameters) Pricing {
 
 func GridPricing(parameters PricingParameters) Pricing {
 	return func(option Option, spot m.Money, t m.Time) m.Money {
+		if t >= option.Expiration() {
+			return option.Payoff(spot)
+		}
+
 		SInf := math.Max(2.0*float64(option.Strike()), 1.1*float64(spot))
 		NAS := 200
 

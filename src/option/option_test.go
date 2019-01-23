@@ -246,3 +246,15 @@ func checkVolImplyAtPrice(R m.Rate, opt Option, spot m.Money, price m.Money, t *
 		t.Errorf("imply is different at price=%f: grid=%f != binomial=%f\n", price, implGrid, implBinomial)
 	}
 }
+
+func TestExpiredPricing(t *testing.T) {
+	opt := &EuropeanCallOption{EuropeanOption{VanillaOption{100, 1}}}
+	spot := m.Money(100)
+
+	binPrice := BinomialPricing(PricingParameters{0.2, 0.02})(opt, spot, 2)
+	gridPrice := BinomialPricing(PricingParameters{0.2, 0.02})(opt, spot, 2)
+	mcPrice := BinomialPricing(PricingParameters{0.2, 0.02})(opt, spot, 2)
+	if !cmp.Equal(binPrice, gridPrice, absCmp(1e-10)) || !cmp.Equal(gridPrice, mcPrice, absCmp(1e-10)) {
+		t.Errorf("Differences in pricing of expired option: %f != %f or %f != %f\n", binPrice, gridPrice, gridPrice, mcPrice)
+	}
+}
