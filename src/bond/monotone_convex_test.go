@@ -37,3 +37,14 @@ func TestMonotoneConvexGeneralCaseResults(t *testing.T) {
 		t.Errorf("wrong forward rates:\n got %v\n expected %v\n", forward, expectedForward)
 	}
 }
+
+func TestMonotoneConvexWithNillsPanic(t *testing.T) {
+	inp := MCInput{Terms: nil, Values: nil}
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("The code did not panic")
+		}
+	}()
+	EstimateInitialFI(inp)
+}
