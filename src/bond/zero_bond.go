@@ -22,5 +22,5 @@ func (bond *ZeroCouponBond) PriceByDF(t m.Time, df DiscountFactor) m.Money {
 }
 
 func (bond *ZeroCouponBond) YieldToMaturity(t m.Time, price m.Money) m.Rate {
-	return m.Rate(-math.Log(float64(price)) / float64(bond.TimeToExpiration(t)))
+	return asRate(price, bond.TimeToExpiration(t))
 }

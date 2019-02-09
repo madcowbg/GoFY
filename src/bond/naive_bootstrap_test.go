@@ -37,13 +37,13 @@ func TestBootstrapBills(t *testing.T) {
 			fwd.Rates, expectedFwd, cmp.Diff(fwd.Rates, expectedFwd, absCmp(1e-8)))
 	}
 
-	dfs := []float64{
+	dfs := []m.Money{
 		DFByConstantRateInterpolation(fwd)(0.4),
 		DFByConstantRateInterpolation(fwd)(ttms[0]),
 		DFByConstantRateInterpolation(fwd)(ttms[5]),
 		DFByConstantRateInterpolation(fwd)(ttms[10]),
 	}
-	expectedDfs := []float64{0.9902201368982367, 0.9997428276077888, 0.9986885319701507, 0.9974410331746054}
+	expectedDfs := []m.Money{0.9902201368982367, 0.9997428276077888, 0.9986885319701507, 0.9974410331746054}
 	if !cmp.Equal(dfs, expectedDfs, absCmp(1e-8)) {
 		t.Errorf("bootstrapped discount factors wrong:\n got %v\n expected %v\n", dfs, expectedDfs)
 	}

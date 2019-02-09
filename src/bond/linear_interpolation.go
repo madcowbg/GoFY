@@ -6,12 +6,12 @@ import (
 )
 
 func DFByConstantRateInterpolation(curve *FixedForwardRateCurve) DiscountFactor {
-	return func(t m.Time) float64 {
+	return func(t m.Time) m.Money {
 		if t < 0 {
-			return math.NaN()
+			return m.Money(math.NaN())
 		}
 
-		df := 1.0
+		df := m.Money(1.0)
 		appliedTime := m.Time(0.0)
 		for i := 0; i < len(curve.Maturities); i++ {
 			if appliedTime >= t {
@@ -19,13 +19,13 @@ func DFByConstantRateInterpolation(curve *FixedForwardRateCurve) DiscountFactor 
 			}
 
 			timeToDiscount := m.Time(math.Min(float64(t), float64(curve.Maturities[i]))) - appliedTime
-			df *= discountFactor(curve.Rates[i], timeToDiscount)
+			df *= asDiscountFactor(curve.Rates[i], timeToDiscount)
 
 			appliedTime += timeToDiscount
 		}
 
 		if appliedTime < t {
-			df *= discountFactor(curve.Rates[len(curve.Rates)-1], t-appliedTime)
+			df *= asDiscountFactor(curve.Rates[len(curve.Rates)-1], t-appliedTime)
 		}
 		return df
 	}

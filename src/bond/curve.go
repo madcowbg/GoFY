@@ -5,23 +5,27 @@ import (
 	"math"
 )
 
-type DiscountFactor func(t m.Time) float64
+type DiscountFactor func(t m.Time) m.Money
 type SpotRate func(t m.Time) m.Rate
 
 func AsRate(discountFactor DiscountFactor) SpotRate {
 	return func(t m.Time) m.Rate {
-		return (&ZeroCouponBond{Expirable{t}}).YieldToMaturity(0, m.Money(discountFactor(t)))
+		return asRate(m.Money(discountFactor(t)), t)
 	}
 }
 
 func AsDiscountFactor(rate SpotRate) DiscountFactor {
-	return func(t m.Time) float64 {
-		return discountFactor(rate(t), t)
+	return func(t m.Time) m.Money {
+		return asDiscountFactor(rate(t), t)
 	}
 }
 
-func discountFactor(rate m.Rate, time m.Time) float64 {
-	return math.Exp(-float64(rate) * float64(time))
+func asDiscountFactor(rate m.Rate, time m.Time) m.Money {
+	return m.Money(math.Exp(-float64(rate) * float64(time)))
+}
+
+func asRate(price m.Money, ttm m.Time) m.Rate {
+	return m.Rate(-math.Log(float64(price)) / float64(ttm))
 }
 
 type FixedForwardRateCurve struct {
