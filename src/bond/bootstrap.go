@@ -9,46 +9,37 @@ import (
 	"sort"
 )
 
-type DiscountFactor func(t m.Time) float64
-
-type FixedForwardRateCurve struct {
-	Maturities []m.Time
-	Rates      []m.Rate
-}
-
-func Yield(discountFactor DiscountFactor, t m.Time) m.Rate {
-	return (&ZeroCouponBond{Expirable{t}}).YieldToMaturity(0, m.Money(discountFactor(t)))
-}
-
-func (curve *FixedForwardRateCurve) DiscountFactor(t m.Time) float64 {
-	if t < 0 {
-		return math.NaN()
-	}
-
-	df := 1.0
-	appliedTime := m.Time(0.0)
-	for i := 0; i < len(curve.Maturities); i++ {
-		if appliedTime >= t {
-			break
+func DFByConstantRateInterpolation(curve *FixedForwardRateCurve) DiscountFactor {
+	return func(t m.Time) float64 {
+		if t < 0 {
+			return math.NaN()
 		}
 
-		timeToDiscount := m.Time(math.Min(float64(t), float64(curve.Maturities[i]))) - appliedTime
-		df *= dfFor(curve.Rates[i], timeToDiscount)
+		df := 1.0
+		appliedTime := m.Time(0.0)
+		for i := 0; i < len(curve.Maturities); i++ {
+			if appliedTime >= t {
+				break
+			}
 
-		appliedTime += timeToDiscount
-	}
+			timeToDiscount := m.Time(math.Min(float64(t), float64(curve.Maturities[i]))) - appliedTime
+			df *= discountFactor(curve.Rates[i], timeToDiscount)
 
-	if appliedTime < t {
-		df *= dfFor(curve.Rates[len(curve.Rates)-1], t-appliedTime)
+			appliedTime += timeToDiscount
+		}
+
+		if appliedTime < t {
+			df *= discountFactor(curve.Rates[len(curve.Rates)-1], t-appliedTime)
+		}
+		return df
 	}
-	return df
 }
 
-func dfFor(r m.Rate, t m.Time) float64 {
-	return math.Exp(-float64(r) * float64(t))
+func discountFactor(rate m.Rate, time m.Time) float64 {
+	return math.Exp(-float64(rate) * float64(time))
 }
 
-func BootstrapForwardRates(yields []m.Rate, ttms []m.Time) *FixedForwardRateCurve {
+func BootstrapNaiveForwardRates(yields []m.Rate, ttms []m.Time) *FixedForwardRateCurve {
 	if len(yields) != len(ttms) {
 		log.Fatalf("yields and times must have same length! %d != %d\n", len(yields), len(ttms))
 	}
@@ -142,7 +133,7 @@ func fwdRatesFromFCBonds(yields []m.Rate, bonds []*FixedCouponBond, t0 m.Time) (
 		problem := optimize.Problem{
 			Func: func(x []float64) float64 {
 				augmented, _ := AugmentedCurve(curve, nextMaturity, m.Rate(x[0]))
-				return math.Abs(float64(bonds[i].PriceByDF(t0, augmented.DiscountFactor) - quotedPrice))
+				return math.Abs(float64(bonds[i].PriceByDF(t0, DFByConstantRateInterpolation(augmented)) - quotedPrice))
 			},
 		}
 		result, err := optimize.Minimize(problem, []float64{float64(yields[i])}, nil, &optimize.NelderMead{})
@@ -172,18 +163,14 @@ func AugmentedCurve(curve *FixedForwardRateCurve, nextT m.Time, fwdRate m.Rate) 
 	return &FixedForwardRateCurve{Maturities: maturities, Rates: rates}, nil
 }
 
-type FixedZeroCouponCurve struct {
-	Maturities []m.Time
-	Rates      []m.Rate
-}
-
-func (curve *FixedForwardRateCurve) AsZeroCouponCurve() *FixedZeroCouponCurve {
+func SpotCurveByConstantRateInterpolation(curve *FixedForwardRateCurve) *FixedSpotCurve {
 	rates := make([]m.Rate, len(curve.Maturities))
 	for i, ttm := range curve.Maturities {
 		bond := &ZeroCouponBond{Expirable{ttm}}
-		rates[i] = bond.YieldToMaturity(0, bond.PriceByDF(0, curve.DiscountFactor))
+		rates[i] = bond.YieldToMaturity(0, bond.PriceByDF(0, DFByConstantRateInterpolation(curve)))
 	}
-	return &FixedZeroCouponCurve{
+
+	return &FixedSpotCurve{
 		Maturities: curve.Maturities,
 		Rates:      rates,
 	}

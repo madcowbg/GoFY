@@ -19,7 +19,7 @@ func TestBootstrapBills(t *testing.T) {
 	quotes := demoQuotes(t.Error)
 	ttms, yields := yieldsFromQuotes(ed, m.Time(0), quotes)
 
-	fwd := BootstrapForwardRates(yields, ttms)
+	fwd := BootstrapNaiveForwardRates(yields, ttms)
 	expectedFwd := []m.Rate{
 		0.023469998836519075, 0.02281000375745703, 0.024657998085030178, 0.023889999389644142, 0.023638000488280967,
 		0.0251200008392252, 0.0234999966621385, 0.020080015659347413, 0.026779997348784976, 0.019659996032726456,
@@ -38,10 +38,10 @@ func TestBootstrapBills(t *testing.T) {
 	}
 
 	dfs := []float64{
-		fwd.DiscountFactor(0.4),
-		fwd.DiscountFactor(ttms[0]),
-		fwd.DiscountFactor(ttms[5]),
-		fwd.DiscountFactor(ttms[10]),
+		DFByConstantRateInterpolation(fwd)(0.4),
+		DFByConstantRateInterpolation(fwd)(ttms[0]),
+		DFByConstantRateInterpolation(fwd)(ttms[5]),
+		DFByConstantRateInterpolation(fwd)(ttms[10]),
 	}
 	expectedDfs := []float64{0.9902201368982367, 0.9997428276077888, 0.9986885319701507, 0.9974410331746054}
 	if !cmp.Equal(dfs, expectedDfs, absCmp(1e-8)) {
@@ -51,7 +51,7 @@ func TestBootstrapBills(t *testing.T) {
 	bootsrappedYields := make([]float64, len(yields))
 	expectedYields := make([]float64, len(yields))
 	for i := range ttms {
-		bootsrappedYields[i] = float64(Yield(fwd.DiscountFactor, ttms[i]))
+		bootsrappedYields[i] = float64(AsRate(DFByConstantRateInterpolation(fwd))(ttms[i]))
 		expectedYields[i] = float64(yields[i])
 	}
 	if !cmp.Equal(bootsrappedYields, expectedYields, absCmp(1e-8)) {
@@ -146,7 +146,7 @@ func TestBootstrapNotes(t *testing.T) {
 	}
 
 	curve := BootstrapForwardRatesFromFixedCoupon(yields, bonds)
-	zeroCouponCurve := curve.AsZeroCouponCurve()
+	zeroCouponCurve := SpotCurveByConstantRateInterpolation(curve)
 
 	zeroRatesAsFloat := make([]float64, len(zeroCouponCurve.Rates))
 	for i, rate := range zeroCouponCurve.Rates {
