@@ -29,11 +29,11 @@ func asRate(price m.Money, ttm m.Time) m.Rate {
 }
 
 type FixedForwardRateCurve struct {
-	Maturities []m.Time
-	Rates      []m.Rate
+	Tenors []m.Time
+	Rates  []m.Rate
 }
 
 type FixedSpotCurve struct {
-	Maturities []m.Time
-	Rates      []m.Rate
+	Tenors []m.Time
+	Rates  []m.Rate
 }

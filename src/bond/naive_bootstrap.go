@@ -21,8 +21,8 @@ func NaiveBootstrapFromZCYields(yields []m.Rate, ttms []m.Time) *FixedForwardRat
 	}
 
 	return &FixedForwardRateCurve{
-		Maturities: ttms,
-		Rates:      fwdRatesFromZCBonds(yields, bonds, t0)}
+		Tenors: ttms,
+		Rates:  fwdRatesFromZCBonds(yields, bonds, t0)}
 }
 
 func fwdRatesFromZCBonds(yields []m.Rate, bonds []*ZeroCouponBond, t0 m.Time) []m.Rate {
@@ -51,7 +51,7 @@ func (s timeArray) Less(i, j int) bool {
 	return s[i] < s[j]
 }
 
-func NaiveBootstrapFromFixedCoupon(quotedYields []m.Rate, quotedBonds []*FixedCouponBond) *FixedForwardRateCurve {
+func NaiveBootstrapFromFixedCoupon(quotedYields []m.Rate, quotedBonds []*FixedCouponBond, t0 m.Time) *FixedForwardRateCurve {
 	if len(quotedYields) != len(quotedBonds) {
 		log.Fatalf("quotedYields and times must have same length! %d != %d\n", len(quotedYields), len(quotedBonds))
 	}
@@ -75,7 +75,7 @@ func NaiveBootstrapFromFixedCoupon(quotedYields []m.Rate, quotedBonds []*FixedCo
 		yields[i] = quotedYields[ttmMap[ttm]]
 	}
 
-	result, err := fwdRatesFromFCBonds(yields, bonds, m.Time(0))
+	result, err := fwdRatesFromFCBonds(yields, bonds, t0)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -88,8 +88,8 @@ func fwdRatesFromFCBonds(yields []m.Rate, bonds []*FixedCouponBond, t0 m.Time) (
 	}
 
 	curve := &FixedForwardRateCurve{
-		Maturities: []m.Time{bonds[0].Maturity},
-		Rates:      []m.Rate{yields[0]},
+		Tenors: []m.Time{bonds[0].Maturity - t0},
+		Rates:  []m.Rate{yields[0]},
 	}
 
 	for i, quotedYield := range yields {
@@ -97,7 +97,7 @@ func fwdRatesFromFCBonds(yields []m.Rate, bonds []*FixedCouponBond, t0 m.Time) (
 			continue
 		}
 
-		nextMaturity := bonds[i].Maturity
+		nextMaturity := bonds[i].Maturity - t0
 		quotedPrice := bonds[i].Price(t0, quotedYield)
 		problem := optimize.Problem{
 			Func: func(x []float64) float64 {
@@ -116,18 +116,18 @@ func fwdRatesFromFCBonds(yields []m.Rate, bonds []*FixedCouponBond, t0 m.Time) (
 }
 
 func extendedWithRate(curve *FixedForwardRateCurve, nextT m.Time, fwdRate m.Rate) (*FixedForwardRateCurve, error) {
-	nPts := len(curve.Maturities)
-	lastMaturity := curve.Maturities[nPts-1]
+	nPts := len(curve.Tenors)
+	lastMaturity := curve.Tenors[nPts-1]
 	if lastMaturity >= nextT {
 		return nil, fmt.Errorf("cannot augment curve with point that is after last maturity! %f >= %f", lastMaturity, nextT)
 	}
 	maturities := make([]m.Time, nPts+1)
-	copy(maturities, curve.Maturities)
+	copy(maturities, curve.Tenors)
 	maturities[nPts] = nextT
 
 	rates := make([]m.Rate, nPts+1)
 	copy(rates, curve.Rates)
 	rates[nPts] = fwdRate
 
-	return &FixedForwardRateCurve{Maturities: maturities, Rates: rates}, nil
+	return &FixedForwardRateCurve{Tenors: maturities, Rates: rates}, nil
 }

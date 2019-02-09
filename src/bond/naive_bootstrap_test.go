@@ -114,7 +114,6 @@ func TestNaiveBootstrapNotes(t *testing.T) {
 	yearStart, _ := time.Parse(dateLayout, "12/31/2018")
 	t0 := m.Time(daysBetween(yearStart, ed) / 365.0)
 
-	// fmt.Println(t0)
 	quotes := demoNotesQuotes(t.Error)
 	bonds, yields := bondsFromQuotes(yearStart, quotes)
 
@@ -146,7 +145,7 @@ func TestNaiveBootstrapNotes(t *testing.T) {
 			yieldByPrice, quotedYield, cmp.Diff(yieldByPrice, quotedYield, absCmp(0.006)))
 	}
 
-	curve := NaiveBootstrapFromFixedCoupon(yields, bonds)
+	curve := NaiveBootstrapFromFixedCoupon(yields, bonds, t0)
 	zeroCouponCurve := SpotCurveByConstantRateInterpolation(curve)
 
 	zeroRatesAsFloat := make([]float64, len(zeroCouponCurve.Rates))

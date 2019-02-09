@@ -3,6 +3,7 @@ package bond
 import (
 	m "../measures"
 	"math"
+	. "sort"
 )
 
 func DFByConstantRateInterpolation(curve *FixedForwardRateCurve) DiscountFactor {
@@ -13,12 +14,12 @@ func DFByConstantRateInterpolation(curve *FixedForwardRateCurve) DiscountFactor 
 
 		df := m.Money(1.0)
 		appliedTime := m.Time(0.0)
-		for i := 0; i < len(curve.Maturities); i++ {
+		for i := 0; i < len(curve.Tenors); i++ {
 			if appliedTime >= t {
 				break
 			}
 
-			timeToDiscount := m.Time(math.Min(float64(t), float64(curve.Maturities[i]))) - appliedTime
+			timeToDiscount := m.Time(math.Min(float64(t), float64(curve.Tenors[i]))) - appliedTime
 			df *= asDiscountFactor(curve.Rates[i], timeToDiscount)
 
 			appliedTime += timeToDiscount
@@ -32,14 +33,15 @@ func DFByConstantRateInterpolation(curve *FixedForwardRateCurve) DiscountFactor 
 }
 
 func SpotCurveByConstantRateInterpolation(curve *FixedForwardRateCurve) *FixedSpotCurve {
-	rates := make([]m.Rate, len(curve.Maturities))
-	for i, ttm := range curve.Maturities {
-		bond := &ZeroCouponBond{Expirable{ttm}}
-		rates[i] = bond.YieldToMaturity(0, bond.PriceByDF(0, DFByConstantRateInterpolation(curve)))
+	rate := AsRate(DFByConstantRateInterpolation(curve))
+
+	rates := make([]m.Rate, len(curve.Tenors))
+	for i, ttm := range curve.Tenors {
+		rates[i] = rate(ttm)
 	}
 
 	return &FixedSpotCurve{
-		Maturities: curve.Maturities,
-		Rates:      rates,
+		Tenors: curve.Tenors,
+		Rates:  rates,
 	}
 }
