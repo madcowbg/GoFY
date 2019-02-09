@@ -2,6 +2,7 @@ package bond
 
 import (
 	m "../measures"
+	"math"
 )
 
 type DiscountFactor func(t m.Time) float64
@@ -17,6 +18,10 @@ func AsDiscountFactor(rate SpotRate) DiscountFactor {
 	return func(t m.Time) float64 {
 		return discountFactor(rate(t), t)
 	}
+}
+
+func discountFactor(rate m.Rate, time m.Time) float64 {
+	return math.Exp(-float64(rate) * float64(time))
 }
 
 type FixedForwardRateCurve struct {

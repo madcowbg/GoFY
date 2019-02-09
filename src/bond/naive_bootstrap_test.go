@@ -19,7 +19,7 @@ func TestBootstrapBills(t *testing.T) {
 	quotes := demoQuotes(t.Error)
 	ttms, yields := yieldsFromQuotes(ed, m.Time(0), quotes)
 
-	fwd := BootstrapNaiveForwardRates(yields, ttms)
+	fwd := NaiveBootstrapFromZCYields(yields, ttms)
 	expectedFwd := []m.Rate{
 		0.023469998836519075, 0.02281000375745703, 0.024657998085030178, 0.023889999389644142, 0.023638000488280967,
 		0.0251200008392252, 0.0234999966621385, 0.020080015659347413, 0.026779997348784976, 0.019659996032726456,
@@ -145,7 +145,7 @@ func TestBootstrapNotes(t *testing.T) {
 			yieldByPrice, quotedYield, cmp.Diff(yieldByPrice, quotedYield, absCmp(0.006)))
 	}
 
-	curve := BootstrapForwardRatesFromFixedCoupon(yields, bonds)
+	curve := NaiveBootstrapFromFixedCoupon(yields, bonds)
 	zeroCouponCurve := SpotCurveByConstantRateInterpolation(curve)
 
 	zeroRatesAsFloat := make([]float64, len(zeroCouponCurve.Rates))
