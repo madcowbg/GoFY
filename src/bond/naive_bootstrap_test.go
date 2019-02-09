@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func TestBootstrapBills(t *testing.T) {
+func TestNaiveBootstrapBills(t *testing.T) {
 	dateLayout := "1/2/2006"
 	ed, _ := time.Parse(dateLayout, "1/11/2019")
 
@@ -107,11 +107,8 @@ func daysBetween(ed, v time.Time) float64 {
 	return float64(v.Sub(ed) / (24 * time.Hour))
 }
 
-func TestBootstrapNotes(t *testing.T) {
-	dateLayout := "1/2/2006"
-	ed, _ := time.Parse(dateLayout, "1/11/2019")
-	yearStart, _ := time.Parse(dateLayout, "12/31/2018")
-	t0 := m.Time(daysBetween(yearStart, ed) / 365.0)
+func TestNaiveBootstrapNotes(t *testing.T) {
+	yearStart, t0 := testDates()
 
 	// fmt.Println(t0)
 	quotes := demoNotesQuotes(t.Error)
@@ -178,6 +175,14 @@ func TestBootstrapNotes(t *testing.T) {
 			"bootstrapped yields wrong:\n by yields %v\n expected %v\n%s\n",
 			zeroRatesAsFloat, expectedRates, cmp.Diff(zeroRatesAsFloat, expectedRates, absCmp(0.00001)))
 	}
+}
+
+func testDates() (yearStart time.Time, t0 m.Time) {
+	dateLayout := "1/2/2006"
+	ed, _ := time.Parse(dateLayout, "1/11/2019")
+	yearStart, _ = time.Parse(dateLayout, "12/31/2018")
+	t0 = m.Time(daysBetween(yearStart, ed) / 365.0)
+	return
 }
 
 func bondsFromQuotes(yearStart time.Time, quotes []WSJUSNoteQuote) ([]*FixedCouponBond, []m.Rate) {
