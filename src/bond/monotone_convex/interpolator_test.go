@@ -1,9 +1,16 @@
-package bond
+package monotone_convex
 
 import (
 	"github.com/google/go-cmp/cmp"
+	"math"
 	"testing"
 )
+
+func absCmp(tol float64) cmp.Option {
+	return cmp.Comparer(func(x, y float64) bool {
+		return (math.IsNaN(x) && math.IsNaN(y)) || math.Abs(x-y) < tol
+	})
+}
 
 func TestMonotoneConvexGeneralCaseResults(t *testing.T) {
 	Terms := []float64{1, 2, 3, 4, 5}
@@ -31,8 +38,8 @@ func TestMonotoneConvexGeneralCaseResults(t *testing.T) {
 	}
 
 	expectedForward := []float64{0.02515, 0.025599999999999998, 0.02635, 0.0274, 0.028749999999999998, 0.0397015,
-		0.04, 0.04028865, 0.05550000000000001, 0.05550000000000001, 0.07999999999999999, 0.07949999999999999, 0.050542500000000004,
-		0.05025, 0.05025, 0.05025}
+		0.04, 0.04028865, 0.05550000000000001, 0.05550000000000001, 0.07999999999999999, 0.07949999999999999,
+		0.050542500000000004, 0.05025, 0.05025, 0.05025}
 	if !cmp.Equal(forward, expectedForward, absCmp(1e-14)) {
 		t.Errorf("wrong forward rates:\n got %v\n expected %v\n", forward, expectedForward)
 	}

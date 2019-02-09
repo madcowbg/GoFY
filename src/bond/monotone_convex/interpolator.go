@@ -1,4 +1,4 @@
-package bond
+package monotone_convex
 
 /*
 	implementation based on Hagan, Patrick S., and Graeme West. "Methods for constructing a yield curve." Wilmott Magazine, May (2008): 70-81.
@@ -35,7 +35,7 @@ func (inp *mcInput) Values(i int) float64 {
 	}
 }
 
-type InitialFI struct {
+type initialFI struct {
 	mcInput
 
 	fD                 []float64
@@ -61,7 +61,7 @@ func ForwardRateInterpolator(terms []float64, rates []float64) func(Term float64
 	return func(Term float64) float64 { return forwardRate(Term, e) }
 }
 
-func spotRate(Term float64, e InitialFI) float64 {
+func spotRate(Term float64, e initialFI) float64 {
 	// 'numbering refers to Wilmott paper, functions are integrated.
 	if Term <= 0 {
 		return e.f[0]
@@ -77,7 +77,7 @@ func spotRate(Term float64, e InitialFI) float64 {
 	return 1 / Term * (e.Terms(i)*e.interpolantAtNodeD[i] + (Term-e.Terms(i))*e.fD[i+1] + (e.Terms(i+1)-e.Terms(i))*G)
 }
 
-func initialInterpolators(e InitialFI, Term float64) (i int, x float64, g0 float64, g1 float64) {
+func initialInterpolators(e initialFI, Term float64) (i int, x float64, g0 float64, g1 float64) {
 	i = e.lastTermIndexBefore(Term)
 	// 'the x in (25)
 	x = (Term - e.Terms(i)) / (e.Terms(i+1) - e.Terms(i))
@@ -129,7 +129,7 @@ func adjustedGIntegrated(x float64, g0 float64, g1 float64) float64 {
 	}
 }
 
-func forwardRate(Term float64, e InitialFI) float64 {
+func forwardRate(Term float64, e initialFI) float64 {
 	// 'numbering refers to Wilmott paper
 	if Term <= 0 {
 		return e.f[0]
@@ -194,7 +194,7 @@ func bound(Minimum float64, Variable float64, Maximum float64) float64 {
 	return math.Max(Minimum, math.Min(Variable, Maximum))
 }
 
-func (e *InitialFI) lastTermIndexBefore(Term float64) int {
+func (e *initialFI) lastTermIndexBefore(Term float64) int {
 	i := sort.SearchFloat64s(e.terms, Term)
 
 	if i >= 1 && Term == e.terms[i-1] {
@@ -204,7 +204,7 @@ func (e *InitialFI) lastTermIndexBefore(Term float64) int {
 	return i
 }
 
-func estimateInitialFI(inp mcInput) InitialFI {
+func estimateInitialFI(inp mcInput) initialFI {
 	fD := make([]float64, inp.N()+1)
 	interpolantAtNodeD := make([]float64, inp.N()+1)
 	f := make([]float64, inp.N()+1)
@@ -220,7 +220,8 @@ func estimateInitialFI(inp mcInput) InitialFI {
 	// 'step 2
 	// '(22)
 	for j := 1; j < inp.N(); j++ {
-		f[j] = (inp.Terms(j)-inp.Terms(j-1))/(inp.Terms(j+1)-inp.Terms(j-1))*fD[j+1] + (inp.Terms(j+1)-inp.Terms(j))/(inp.Terms(j+1)-inp.Terms(j-1))*fD[j]
+		f[j] = (inp.Terms(j)-inp.Terms(j-1))/(inp.Terms(j+1)-inp.Terms(j-1))*fD[j+1] +
+			(inp.Terms(j+1)-inp.Terms(j))/(inp.Terms(j+1)-inp.Terms(j-1))*fD[j]
 	}
 	// '(23)
 	f[0] = fD[1] - 0.5*(f[1]-fD[1])
@@ -235,5 +236,5 @@ func estimateInitialFI(inp mcInput) InitialFI {
 
 	f[inp.N()] = bound(0, f[inp.N()], 2*fD[inp.N()])
 
-	return InitialFI{mcInput: inp, fD: fD, interpolantAtNodeD: interpolantAtNodeD, f: f}
+	return initialFI{mcInput: inp, fD: fD, interpolantAtNodeD: interpolantAtNodeD, f: f}
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"./bond"
+	"./bond/monotone_convex"
 	m "./measures"
 	"./option"
 	"fmt"
@@ -15,13 +16,17 @@ import (
 //}
 
 func run_mc() {
-	Terms := []float64{0, 1, 2, 3, 4, 5}
-	Values := []float64{0.03, 0.03, 0.04, 0.047, 0.06, 0.06}
+	Terms := []float64{1, 2, 3, 4, 5}
+	Values := []float64{0.03, 0.04, 0.047, 0.06, 0.06}
 
 	fmt.Printf("term\trate\tfwd\n")
 	for i := 0; i < 520; i++ {
 		t := float64(i) / 100
-		fmt.Printf("%f\t%f\t%f\n", t, bond.SpotRateInterpolator(Terms, Values)(t), bond.ForwardRateInterpolator(Terms, Values)(t))
+		fmt.Printf(
+			"%f\t%f\t%f\n",
+			t,
+			monotone_convex.SpotRateInterpolator(Terms, Values)(t),
+			monotone_convex.ForwardRateInterpolator(Terms, Values)(t))
 	}
 }
 
