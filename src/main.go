@@ -8,16 +8,35 @@ import (
 	"reflect"
 )
 
-func main() {
-	run_bond()
-	run_option()
+//func main() {
+//	run_bond()
+//	run_option()
+//	run_mc()
+//}
+
+func run_mc() {
+	Terms := []float64{0, 1, 2, 3, 4, 5}
+	Values := []float64{0.03, 0.03, 0.04, 0.047, 0.06, 0.06}
+
+	inp := bond.MCInput{Terms: Terms, Values: Values, N: len(Terms) - 1}
+	e := bond.InitialFIEstimates(inp)
+
+	//tenors := []float64{0.1, 0.2, 0.3, 0.4, 0.5}
+	//for _, t := range(tenors) {
+	//	fmt.Printf("t=%f\tint=%f\n", t, bond.Interpolant(t, e))
+	//}
+	fmt.Printf("term\trate\tfwd\n")
+	for i := 0; i < 520; i++ {
+		t := float64(i) / 100
+		fmt.Printf("%f\t%f\t%f\n", t, bond.Interpolant(t, e), bond.Forward(t, e))
+	}
 }
 
 func run_bond() {
-	bond := bond.ZeroCouponBond{bond.Expirable{1}}
+	zcBond := bond.ZeroCouponBond{bond.Expirable{1}}
 	rate := m.Rate(0.1)
 
-	fmt.Printf("T=%f, r=%f, Price=%f\n", bond.Maturity, rate, bond.Price(0, rate))
+	fmt.Printf("T=%f, r=%f, Price=%f\n", zcBond.Maturity, rate, zcBond.Price(0, rate))
 }
 
 func run_option() {
