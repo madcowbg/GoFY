@@ -6,20 +6,20 @@ import (
 )
 
 func TestMonotoneConvexGeneralCaseResults(t *testing.T) {
-	Terms := []float64{0, 1, 2, 3, 4, 5}
-	Values := []float64{0.03, 0.03, 0.04, 0.047, 0.06, 0.06}
+	Terms := []float64{1, 2, 3, 4, 5}
+	Values := []float64{0.03, 0.04, 0.047, 0.06, 0.06}
 
-	inp := MCInput{Terms: Terms, Values: Values}
-	e := EstimateInitialFI(inp)
+	spotInterpolator := SpotRateInterpolator(Terms, Values)
+	forwardInterpolator := ForwardRateInterpolator(Terms, Values)
 
 	tenors := []float64{0.1, 0.2, 0.3, 0.4, 0.5, 0.99, 1, 1.01, 2, 2.01, 3, 4, 4.9, 5, 5.1, 10}
 	interpolated := make([]float64, len(tenors))
 	for i, t := range tenors {
-		interpolated[i] = Interpolant(t, e)
+		interpolated[i] = spotInterpolator(t)
 	}
 	forward := make([]float64, len(tenors))
 	for i, t := range tenors {
-		forward[i] = Forward(t, e)
+		forward[i] = forwardInterpolator(t)
 	}
 
 	expectedInterpolated := []float64{
@@ -39,12 +39,12 @@ func TestMonotoneConvexGeneralCaseResults(t *testing.T) {
 }
 
 func TestMonotoneConvexWithNillsPanic(t *testing.T) {
-	inp := MCInput{Terms: nil, Values: nil}
+	inp := mcInput{}
 
 	defer func() {
 		if r := recover(); r == nil {
 			t.Errorf("The code did not panic")
 		}
 	}()
-	EstimateInitialFI(inp)
+	estimateInitialFI(inp)
 }

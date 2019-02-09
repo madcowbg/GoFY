@@ -18,17 +18,10 @@ func run_mc() {
 	Terms := []float64{0, 1, 2, 3, 4, 5}
 	Values := []float64{0.03, 0.03, 0.04, 0.047, 0.06, 0.06}
 
-	inp := bond.MCInput{Terms: Terms, Values: Values}
-	e := bond.EstimateInitialFI(inp)
-
-	//tenors := []float64{0.1, 0.2, 0.3, 0.4, 0.5}
-	//for _, t := range(tenors) {
-	//	fmt.Printf("t=%f\tint=%f\n", t, bond.Interpolant(t, e))
-	//}
 	fmt.Printf("term\trate\tfwd\n")
 	for i := 0; i < 520; i++ {
 		t := float64(i) / 100
-		fmt.Printf("%f\t%f\t%f\n", t, bond.Interpolant(t, e), bond.Forward(t, e))
+		fmt.Printf("%f\t%f\t%f\n", t, bond.SpotRateInterpolator(Terms, Values)(t), bond.ForwardRateInterpolator(Terms, Values)(t))
 	}
 }
 
