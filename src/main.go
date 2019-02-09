@@ -18,8 +18,8 @@ func run_mc() {
 	Terms := []float64{0, 1, 2, 3, 4, 5}
 	Values := []float64{0.03, 0.03, 0.04, 0.047, 0.06, 0.06}
 
-	inp := bond.MCInput{Terms: Terms, Values: Values, N: len(Terms) - 1}
-	e := bond.InitialFIEstimates(inp)
+	inp := bond.MCInput{Terms: Terms, Values: Values}
+	e := bond.EstimateInitialFI(inp)
 
 	//tenors := []float64{0.1, 0.2, 0.3, 0.4, 0.5}
 	//for _, t := range(tenors) {

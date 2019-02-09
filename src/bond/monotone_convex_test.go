@@ -1,7 +1,6 @@
 package bond
 
 import (
-	"fmt"
 	"github.com/google/go-cmp/cmp"
 	"testing"
 )
@@ -10,8 +9,8 @@ func TestMonotoneConvexGeneralCaseResults(t *testing.T) {
 	Terms := []float64{0, 1, 2, 3, 4, 5}
 	Values := []float64{0.03, 0.03, 0.04, 0.047, 0.06, 0.06}
 
-	inp := MCInput{Terms: Terms, Values: Values, N: len(Terms) - 1}
-	e := InitialFIEstimates(inp)
+	inp := MCInput{Terms: Terms, Values: Values}
+	e := EstimateInitialFI(inp)
 
 	tenors := []float64{0.1, 0.2, 0.3, 0.4, 0.5, 0.99, 1, 1.01, 2, 2.01, 3, 4, 4.9, 5, 5.1, 10}
 	interpolated := make([]float64, len(tenors))
@@ -22,9 +21,6 @@ func TestMonotoneConvexGeneralCaseResults(t *testing.T) {
 	for i, t := range tenors {
 		forward[i] = Forward(t, e)
 	}
-
-	fmt.Printf("%v\n", interpolated)
-	fmt.Printf("%v\n", forward)
 
 	expectedInterpolated := []float64{
 		0.02505, 0.025199999999999997, 0.02545, 0.025799999999999997, 0.02625, 0.0299005, 0.03, 0.03010044108910891,
