@@ -5,16 +5,13 @@ import (
 	"math"
 )
 
-type DiscountFactor func(t m.Time) m.Money
-type SpotRate func(t m.Time) m.Rate
-
-func AsRate(discountFactor DiscountFactor) SpotRate {
+func AsRate(discountFactor m.DiscountFactor) m.SpotRate {
 	return func(t m.Time) m.Rate {
 		return asRate(m.Money(discountFactor(t)), t)
 	}
 }
 
-func AsDiscountFactor(rate SpotRate) DiscountFactor {
+func AsDiscountFactor(rate m.SpotRate) m.DiscountFactor {
 	return func(t m.Time) m.Money {
 		return asDiscountFactor(rate(t), t)
 	}

@@ -45,7 +45,7 @@ type initialFI struct {
 	f []float64
 }
 
-func SpotRateInterpolator(terms []m.Time, rates []m.Rate) func(Term m.Time) m.Rate {
+func SpotRateInterpolator(terms []m.Time, rates []m.Rate) m.SpotRate {
 	if len(terms) != len(rates) {
 		log.Fatalf("must have corresponding length of terms and rates! %d != %d\n", len(terms), len(rates))
 	}

@@ -74,7 +74,7 @@ func (bond *FixedCouponBond) Price(t m.Time, rate m.Rate) m.Money {
 	return price
 }
 
-func (bond FixedCouponBond) PriceByDF(t m.Time, df DiscountFactor) m.Money {
+func (bond FixedCouponBond) PriceByDF(t m.Time, df m.DiscountFactor) m.Money {
 	price := m.Money(0.0)
 	for _, cashflow := range bond.RemainingCashflows(t) {
 		price += cashflow.PriceByDF(t, df)

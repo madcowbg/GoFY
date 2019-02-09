@@ -17,7 +17,7 @@ func (bond *ZeroCouponBond) Price(t m.Time, rate m.Rate) m.Money {
 	return m.Money(math.Exp(-float64(bond.TimeToExpiration(t)) * float64(rate)))
 }
 
-func (bond *ZeroCouponBond) PriceByDF(t m.Time, df DiscountFactor) m.Money {
+func (bond *ZeroCouponBond) PriceByDF(t m.Time, df m.DiscountFactor) m.Money {
 	return m.Money(df(bond.TimeToExpiration(t)))
 }
 

@@ -5,7 +5,6 @@ import (
 	"encoding/csv"
 	"github.com/google/go-cmp/cmp"
 	"io"
-	"log"
 	"math"
 	"strconv"
 	"strings"
@@ -173,7 +172,6 @@ func TestNaiveBootstrapNotes(t *testing.T) {
 		0.031135, 0.031073, 0.031043, 0.031101, 0.031057, 0.031123, 0.031058, 0.031194, 0.031159, 0.031120, 0.031150,
 		0.031082, 0.031171, 0.031220, 0.031229, 0.031280, 0.031292, 0.031216, 0.031209}
 
-	log.Printf("exp %v\n", expectedRates)
 	if !cmp.Equal(zeroRatesAsFloat, expectedRates, absCmp(0.00001)) {
 		t.Errorf(
 			"bootstrapped yields wrong:\n by yields %v\n expected %v\n%s\n",

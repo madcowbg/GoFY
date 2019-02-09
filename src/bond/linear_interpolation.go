@@ -6,7 +6,7 @@ import (
 	. "sort"
 )
 
-func DFByConstantRateInterpolation(curve *FixedForwardRateCurve) DiscountFactor {
+func DFByConstantRateInterpolation(curve *FixedForwardRateCurve) m.DiscountFactor {
 	return func(t m.Time) m.Money {
 		if t < 0 {
 			return m.Money(math.NaN())
