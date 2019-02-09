@@ -55,7 +55,6 @@ func NaiveBootstrapFromFixedCoupon(quotedYields []m.Rate, quotedBonds []*FixedCo
 	if len(quotedYields) != len(quotedBonds) {
 		log.Fatalf("quotedYields and times must have same length! %d != %d\n", len(quotedYields), len(quotedBonds))
 	}
-	t0 := m.Time(0)
 
 	ttmMap := map[m.Time]int{}
 	for i, bond := range quotedBonds {
@@ -76,7 +75,7 @@ func NaiveBootstrapFromFixedCoupon(quotedYields []m.Rate, quotedBonds []*FixedCo
 		yields[i] = quotedYields[ttmMap[ttm]]
 	}
 
-	result, err := fwdRatesFromFCBonds(yields, bonds, t0)
+	result, err := fwdRatesFromFCBonds(yields, bonds, m.Time(0))
 	if err != nil {
 		log.Fatal(err)
 	}

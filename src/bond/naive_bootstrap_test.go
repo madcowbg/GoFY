@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"github.com/google/go-cmp/cmp"
 	"io"
+	"log"
 	"math"
 	"strconv"
 	"strings"
@@ -108,7 +109,10 @@ func daysBetween(ed, v time.Time) float64 {
 }
 
 func TestNaiveBootstrapNotes(t *testing.T) {
-	yearStart, t0 := testDates()
+	dateLayout := "1/2/2006"
+	ed, _ := time.Parse(dateLayout, "1/11/2019")
+	yearStart, _ := time.Parse(dateLayout, "12/31/2018")
+	t0 := m.Time(daysBetween(yearStart, ed) / 365.0)
 
 	// fmt.Println(t0)
 	quotes := demoNotesQuotes(t.Error)
@@ -170,19 +174,12 @@ func TestNaiveBootstrapNotes(t *testing.T) {
 		0.031135, 0.031073, 0.031043, 0.031101, 0.031057, 0.031123, 0.031058, 0.031194, 0.031159, 0.031120, 0.031150,
 		0.031082, 0.031171, 0.031220, 0.031229, 0.031280, 0.031292, 0.031216, 0.031209}
 
+	log.Printf("exp %v\n", expectedRates)
 	if !cmp.Equal(zeroRatesAsFloat, expectedRates, absCmp(0.00001)) {
 		t.Errorf(
 			"bootstrapped yields wrong:\n by yields %v\n expected %v\n%s\n",
 			zeroRatesAsFloat, expectedRates, cmp.Diff(zeroRatesAsFloat, expectedRates, absCmp(0.00001)))
 	}
-}
-
-func testDates() (yearStart time.Time, t0 m.Time) {
-	dateLayout := "1/2/2006"
-	ed, _ := time.Parse(dateLayout, "1/11/2019")
-	yearStart, _ = time.Parse(dateLayout, "12/31/2018")
-	t0 = m.Time(daysBetween(yearStart, ed) / 365.0)
-	return
 }
 
 func bondsFromQuotes(yearStart time.Time, quotes []WSJUSNoteQuote) ([]*FixedCouponBond, []m.Rate) {
