@@ -109,9 +109,9 @@ func adjustedGIntegrated(x float64, g0 float64, g1 float64) float64 {
 		eta := 3 * g1 / (g1 - g0)
 		//'(30)
 		if x < eta {
-			return g1*x - 1/3*(g0-g1)*(math.Pow(eta-x, 3)/math.Pow(eta, 2)-eta)
+			return g1*x - 1.0/3.0*(g0-g1)*(math.Pow(eta-x, 3)/math.Pow(eta, 2)-eta)
 		} else {
-			return (2/3*g1+1/3*g0)*eta + g1*(x-eta)
+			return (2.0/3.0*g1+1.0/3.0*g0)*eta + g1*(x-eta)
 		}
 	} else if g0 == 0 || g1 == 0 {
 		return 0
@@ -123,9 +123,9 @@ func adjustedGIntegrated(x float64, g0 float64, g1 float64) float64 {
 		A := -g0 * g1 / (g0 + g1)
 		// '(32)
 		if x <= eta {
-			return A*x - 1/3*(g0-A)*(math.Pow(eta-x, 3)/math.Pow(eta, 2)-eta)
+			return A*x - 1.0/3.0*(g0-A)*(math.Pow(eta-x, 3)/math.Pow(eta, 2)-eta)
 		} else {
-			return (2/3*A+1/3*g0)*eta + A*(x-eta) + (g1-A)/3*math.Pow(x-eta, 3)/math.Pow(1-eta, 2)
+			return (2.0/3.0*A+1.0/3.0*g0)*eta + A*(x-eta) + (g1-A)/3*math.Pow(x-eta, 3)/math.Pow(1-eta, 2)
 		}
 	}
 }
