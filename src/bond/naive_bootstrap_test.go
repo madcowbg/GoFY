@@ -144,8 +144,8 @@ func TestNaiveBootstrapNotes(t *testing.T) {
 			yieldByPrice, quotedYield, cmp.Diff(yieldByPrice, quotedYield, absCmp(0.006)))
 	}
 
-	curve := NaiveBootstrapFromFixedCoupon(yields, bonds, t0)
-	zeroCouponCurve := SpotCurveByConstantRateInterpolation(curve)
+	forwardCurve := NaiveBootstrapFromFixedCoupon(yields, bonds, t0)
+	zeroCouponCurve := SpotCurveByConstantRateInterpolation(forwardCurve)
 
 	zeroRatesAsFloat := make([]float64, len(zeroCouponCurve.Rates))
 	for i, rate := range zeroCouponCurve.Rates {

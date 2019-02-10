@@ -7,6 +7,8 @@ import (
 	"log"
 )
 import (
+	b "./bond"
+	mc "./bond/monotone_convex"
 	m "./measures"
 	o "./option"
 )
@@ -177,6 +179,81 @@ func calculateOptionImplyVol(option o.Option, parameters o.PricingParameters, sp
 		Analytics:  calculateOptionAnalytics(option, newParameters, spot, t),
 		ImpliedVol: m.Return(impliedVol),
 	}, nil
+}
+
+type CurveBootstrapData struct {
+	BondDefinitions []CouponBondDef
+	Yields          []m.Rate
+}
+
+type CouponBondDef struct {
+	IssueTime       m.Time
+	Maturity        m.Time
+	CouponFrequency float64
+	Coupon          m.Money
+}
+
+type TenorDefs struct {
+	Tenors []m.Time
+}
+
+type BootstrapMethod string
+
+const (
+	Naive          BootstrapMethod = "Naive"
+	MonotoneConvex BootstrapMethod = "MonotoneConvex"
+)
+
+//export bootstrapCurve
+func bootstrapCurve(method BootstrapMethod, t0 float64, BootstrapData string, TenorData string) *C.char {
+	var bootstrapData CurveBootstrapData
+	json.Unmarshal([]byte(BootstrapData), &bootstrapData)
+	if len(bootstrapData.BondDefinitions) != len(bootstrapData.Yields) {
+		log.Fatalf(
+			"bad format - different length of bonds and qoutes: %d != %d\n",
+			len(bootstrapData.BondDefinitions),
+			len(bootstrapData.Yields))
+	}
+
+	var tenorsDefs TenorDefs
+	json.Unmarshal([]byte(TenorData), &tenorsDefs)
+	if len(tenorsDefs.Tenors) == 0 {
+		log.Fatalf("Invalid tenor request: %v\n", tenorsDefs.Tenors)
+	}
+
+	bonds := make([]*b.FixedCouponBond, len(bootstrapData.BondDefinitions))
+	for i, bondDef := range bootstrapData.BondDefinitions {
+		bonds[i] = &b.FixedCouponBond{
+			Expirable: b.Expirable{Maturity: bondDef.Maturity},
+			IssueTime: bondDef.IssueTime,
+			Coupon: b.FixedCouponTerm{
+				Frequency: bondDef.CouponFrequency,
+				PerAnnum:  bondDef.Coupon,
+			},
+		}
+	}
+
+	yields := bootstrapData.Yields
+	tenors := tenorsDefs.Tenors
+
+	var spotCurve *b.FixedSpotCurve
+	switch method {
+	case MonotoneConvex:
+		spotCurve = b.OLSBootstrapFromFixedCoupon(mc.SpotRateInterpolator, yields, bonds, m.Time(t0), tenors)
+		break
+	case Naive:
+		forwardCurve := b.NaiveBootstrapFromFixedCoupon(yields, bonds, m.Time(t0))
+		spotCurve = b.SpotCurveByConstantRateInterpolation(forwardCurve)
+		break
+	default:
+		return C.CString(fmt.Sprintf("Invalid bootstrap method: %s\n", method))
+	}
+
+	res, error := json.Marshal(spotCurve)
+	if error != nil {
+		return C.CString(fmt.Sprint(error))
+	}
+	return C.CString(string(res))
 }
 
 func main() {
