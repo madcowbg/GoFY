@@ -215,12 +215,6 @@ func bootstrapCurve(method BootstrapMethod, t0 float64, BootstrapData string, Te
 			len(bootstrapData.Yields))
 	}
 
-	var tenorsDefs TenorDefs
-	json.Unmarshal([]byte(TenorData), &tenorsDefs)
-	if len(tenorsDefs.Tenors) == 0 {
-		log.Fatalf("Invalid tenor request: %v\n", tenorsDefs.Tenors)
-	}
-
 	bonds := make([]*b.FixedCouponBond, len(bootstrapData.BondDefinitions))
 	for i, bondDef := range bootstrapData.BondDefinitions {
 		bonds[i] = &b.FixedCouponBond{
@@ -234,11 +228,18 @@ func bootstrapCurve(method BootstrapMethod, t0 float64, BootstrapData string, Te
 	}
 
 	yields := bootstrapData.Yields
-	tenors := tenorsDefs.Tenors
 
 	var spotCurve *b.FixedSpotCurve
 	switch method {
 	case MonotoneConvex:
+		var tenorsDefs TenorDefs
+		json.Unmarshal([]byte(TenorData), &tenorsDefs)
+		if len(tenorsDefs.Tenors) == 0 {
+			log.Fatalf("Invalid tenor request, needed for monotone convex! : %v\n", tenorsDefs.Tenors)
+		}
+
+		tenors := tenorsDefs.Tenors
+
 		spotCurve = b.OLSBootstrapFromFixedCoupon(mc.SpotRateInterpolator, yields, bonds, m.Time(t0), tenors)
 		break
 	case Naive:
