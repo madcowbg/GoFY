@@ -33,7 +33,7 @@ func DFByConstantRateInterpolation(curve *FixedForwardRateCurve) m.DiscountFacto
 }
 
 func SpotCurveByConstantRateInterpolation(curve *FixedForwardRateCurve) *FixedSpotCurve {
-	rate := AsRate(DFByConstantRateInterpolation(curve))
+	rate := AsSpotRate(DFByConstantRateInterpolation(curve))
 
 	rates := make([]m.Rate, len(curve.Tenors))
 	for i, ttm := range curve.Tenors {

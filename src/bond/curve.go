@@ -5,7 +5,7 @@ import (
 	"math"
 )
 
-func AsRate(discountFactor m.DiscountFactor) m.SpotRate {
+func AsSpotRate(discountFactor m.DiscountFactor) m.SpotRate {
 	return func(t m.Time) m.Rate {
 		return asRate(m.Money(discountFactor(t)), t)
 	}
@@ -33,4 +33,12 @@ type FixedForwardRateCurve struct {
 type FixedSpotCurve struct {
 	Tenors []m.Time
 	Rates  []m.Rate
+}
+
+func InterpolateOnArray(interpolator func(m.Time) m.Rate, tenors []m.Time) []m.Rate {
+	result := make([]m.Rate, len(tenors))
+	for i, t := range tenors {
+		result[i] = interpolator(t)
+	}
+	return result
 }

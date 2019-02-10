@@ -204,8 +204,14 @@ const (
 	MonotoneConvex BootstrapMethod = "MonotoneConvex"
 )
 
+type BootstrapOutput struct {
+	SpotCurve                b.FixedSpotCurve
+	InterpolatedSpotCurve    b.FixedSpotCurve
+	InterpolatedForwardCurve b.FixedForwardRateCurve
+}
+
 //export bootstrapCurve
-func bootstrapCurve(method BootstrapMethod, t0 float64, BootstrapData string, TenorData string) *C.char {
+func bootstrapCurve(method BootstrapMethod, t0 float64, BootstrapData string, TenorData string, OutputTenors string) *C.char {
 	var bootstrapData CurveBootstrapData
 	json.Unmarshal([]byte(BootstrapData), &bootstrapData)
 	if len(bootstrapData.BondDefinitions) != len(bootstrapData.Yields) {
@@ -229,7 +235,7 @@ func bootstrapCurve(method BootstrapMethod, t0 float64, BootstrapData string, Te
 
 	yields := bootstrapData.Yields
 
-	var spotCurve *b.FixedSpotCurve
+	var output BootstrapOutput
 	switch method {
 	case MonotoneConvex:
 		var tenorsDefs TenorDefs
@@ -240,17 +246,43 @@ func bootstrapCurve(method BootstrapMethod, t0 float64, BootstrapData string, Te
 
 		tenors := tenorsDefs.Tenors
 
-		spotCurve = b.OLSBootstrapFromFixedCoupon(mc.SpotRateInterpolator, yields, bonds, m.Time(t0), tenors)
+		spotCurve := b.OLSBootstrapFromFixedCoupon(mc.SpotRateInterpolator, yields, bonds, m.Time(t0), tenors)
+
+		var outputTenorDefs TenorDefs
+		json.Unmarshal([]byte(OutputTenors), &outputTenorDefs)
+
+		var interpolatedSpot b.FixedSpotCurve
+		var interpolatedForward b.FixedForwardRateCurve
+		if len(outputTenorDefs.Tenors) > 0 {
+			interpolatedSpot = b.FixedSpotCurve{
+				Tenors: outputTenorDefs.Tenors,
+				Rates: b.InterpolateOnArray(
+					mc.SpotRateInterpolator(spotCurve.Tenors, spotCurve.Rates),
+					outputTenorDefs.Tenors)}
+			interpolatedForward = b.FixedForwardRateCurve{
+				Tenors: outputTenorDefs.Tenors,
+				Rates: b.InterpolateOnArray(
+					mc.ForwardRateInterpolator(spotCurve.Tenors, spotCurve.Rates),
+					outputTenorDefs.Tenors)}
+		}
+
+		output = BootstrapOutput{
+			SpotCurve:                *spotCurve,
+			InterpolatedSpotCurve:    interpolatedSpot,
+			InterpolatedForwardCurve: interpolatedForward,
+		}
 		break
 	case Naive:
 		forwardCurve := b.NaiveBootstrapFromFixedCoupon(yields, bonds, m.Time(t0))
-		spotCurve = b.SpotCurveByConstantRateInterpolation(forwardCurve)
+		spotCurve := b.SpotCurveByConstantRateInterpolation(forwardCurve)
+
+		output = BootstrapOutput{SpotCurve: *spotCurve}
 		break
 	default:
 		return C.CString(fmt.Sprintf("Invalid bootstrap method: %s\n", method))
 	}
 
-	res, error := json.Marshal(spotCurve)
+	res, error := json.Marshal(output)
 	if error != nil {
 		return C.CString(fmt.Sprint(error))
 	}

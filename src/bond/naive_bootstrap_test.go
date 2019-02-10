@@ -51,7 +51,7 @@ func TestNaiveBootstrapBills(t *testing.T) {
 	bootsrappedYields := make([]float64, len(yields))
 	expectedYields := make([]float64, len(yields))
 	for i := range ttms {
-		bootsrappedYields[i] = float64(AsRate(DFByConstantRateInterpolation(fwd))(ttms[i]))
+		bootsrappedYields[i] = float64(AsSpotRate(DFByConstantRateInterpolation(fwd))(ttms[i]))
 		expectedYields[i] = float64(yields[i])
 	}
 	if !cmp.Equal(bootsrappedYields, expectedYields, absCmp(1e-8)) {
