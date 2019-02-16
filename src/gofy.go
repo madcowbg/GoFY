@@ -211,7 +211,7 @@ type BootstrapOutput struct {
 }
 
 //export bootstrapCurve
-func bootstrapCurve(method BootstrapMethod, t0 float64, BootstrapData string, TenorData string, OutputTenors string) *C.char {
+func bootstrapCurve(method BootstrapMethod, lambda float64, t0 float64, BootstrapData string, TenorData string, OutputTenors string) *C.char {
 	var bootstrapData CurveBootstrapData
 	json.Unmarshal([]byte(BootstrapData), &bootstrapData)
 	if len(bootstrapData.BondDefinitions) != len(bootstrapData.Yields) {
@@ -246,7 +246,7 @@ func bootstrapCurve(method BootstrapMethod, t0 float64, BootstrapData string, Te
 
 		tenors := tenorsDefs.Tenors
 
-		spotCurve := b.OLSBootstrapFromFixedCoupon(mc.SpotRateInterpolator, yields, bonds, m.Time(t0), tenors)
+		spotCurve := b.OLSBootstrapFromFixedCoupon(mc.SpotRateInterpolator(lambda), yields, bonds, m.Time(t0), tenors)
 
 		var outputTenorDefs TenorDefs
 		json.Unmarshal([]byte(OutputTenors), &outputTenorDefs)
@@ -257,12 +257,12 @@ func bootstrapCurve(method BootstrapMethod, t0 float64, BootstrapData string, Te
 			interpolatedSpot = b.FixedSpotCurve{
 				Tenors: outputTenorDefs.Tenors,
 				Rates: b.InterpolateOnArray(
-					mc.SpotRateInterpolator(spotCurve.Tenors, spotCurve.Rates),
+					mc.SpotRateInterpolator(lambda)(spotCurve.Tenors, spotCurve.Rates),
 					outputTenorDefs.Tenors)}
 			interpolatedForward = b.FixedForwardRateCurve{
 				Tenors: outputTenorDefs.Tenors,
 				Rates: b.InterpolateOnArray(
-					mc.ForwardRateInterpolator(spotCurve.Tenors, spotCurve.Rates),
+					mc.ForwardRateInterpolator(lambda)(spotCurve.Tenors, spotCurve.Rates),
 					outputTenorDefs.Tenors)}
 		}
 

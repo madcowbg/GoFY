@@ -12,8 +12,9 @@ import (
 )
 
 type mcInput struct {
-	terms []m.Time
-	rates []m.Rate
+	lambda float64
+	terms  []m.Time
+	rates  []m.Rate
 }
 
 func (inp *mcInput) N() int {
@@ -45,21 +46,25 @@ type initialFI struct {
 	f []float64
 }
 
-func SpotRateInterpolator(terms []m.Time, rates []m.Rate) m.SpotRate {
-	if len(terms) != len(rates) {
-		log.Fatalf("must have corresponding length of terms and rates! %d != %d\n", len(terms), len(rates))
-	}
+func SpotRateInterpolator(lambda float64) func(terms []m.Time, rates []m.Rate) m.SpotRate {
+	return func(terms []m.Time, rates []m.Rate) m.SpotRate {
+		if len(terms) != len(rates) {
+			log.Fatalf("must have corresponding length of terms and rates! %d != %d\n", len(terms), len(rates))
+		}
 
-	e := estimateInitialFI(mcInput{terms, rates})
-	return func(Term m.Time) m.Rate { return m.Rate(spotRate(float64(Term), e)) }
+		e := estimateInitialFI(mcInput{lambda, terms, rates})
+		return func(Term m.Time) m.Rate { return m.Rate(spotRate(float64(Term), e)) }
+	}
 }
 
-func ForwardRateInterpolator(terms []m.Time, rates []m.Rate) func(Term m.Time) m.Rate {
-	if len(terms) != len(rates) {
-		log.Fatalf("must have corresponding length of terms and rates! %d != %d\n", len(terms), len(rates))
+func ForwardRateInterpolator(lambda float64) func(terms []m.Time, rates []m.Rate) func(Term m.Time) m.Rate {
+	return func(terms []m.Time, rates []m.Rate) func(Term m.Time) m.Rate {
+		if len(terms) != len(rates) {
+			log.Fatalf("must have corresponding length of terms and rates! %d != %d\n", len(terms), len(rates))
+		}
+		e := estimateInitialFI(mcInput{lambda, terms, rates})
+		return func(Term m.Time) m.Rate { return m.Rate(forwardRate(float64(Term), e)) }
 	}
-	e := estimateInitialFI(mcInput{terms, rates})
-	return func(Term m.Time) m.Rate { return m.Rate(forwardRate(float64(Term), e)) }
 }
 
 func spotRate(Term float64, e initialFI) float64 {
@@ -202,13 +207,25 @@ func (e *initialFI) lastTermIndexBefore(Term float64) int {
 func estimateInitialFI(inp mcInput) initialFI {
 	fD := make([]float64, inp.N()+1)
 	interpolantAtNodeD := make([]float64, inp.N()+1)
-	f := make([]float64, inp.N()+1)
 
 	// 'step 1
 	for j := 1; j < inp.N()+1; j++ {
 		fD[j] = (inp.TermAt(j)*inp.RateAt(j) - inp.TermAt(j-1)*inp.RateAt(j-1)) / (inp.TermAt(j) - inp.TermAt(j-1))
 		interpolantAtNodeD[j] = inp.RateAt(j)
 	}
+
+	var f []float64
+	if inp.lambda == 0 {
+		f = estimateInitialFIunameliorated(inp, fD)
+	} else {
+		f = estimateInitialFIameliorated(inp, fD)
+	}
+
+	return initialFI{mcInput: inp, fD: fD, interpolantAtNodeD: interpolantAtNodeD, f: f}
+}
+
+func estimateInitialFIunameliorated(inp mcInput, fD []float64) []float64 {
+	f := make([]float64, inp.N()+1)
 
 	// 'f_i estimation under the unameliorated method
 	// 'numbering refers to Wilmott paper
@@ -230,6 +247,118 @@ func estimateInitialFI(inp mcInput) initialFI {
 	}
 
 	f[inp.N()] = bound(0, f[inp.N()], 2*fD[inp.N()])
+	return f
+}
 
-	return initialFI{mcInput: inp, fD: fD, interpolantAtNodeD: interpolantAtNodeD, f: f}
+func estimateInitialFIameliorated(inp mcInput, fD []float64) []float64 {
+	N := inp.N()
+
+	fdiscrete := make([]float64, N+2)
+	copy(fdiscrete, fD)
+
+	//'f_i estimation under the ameliorated method
+	//'numbering refers to AMF paper
+	Theta := make([][]float64, 3)
+	for i := range Theta {
+		Theta[i] = make([]float64, N+3)
+	}
+
+	fminmax := make([][][]float64, 3)
+	for i := range fminmax {
+		fminmax[i] = make([][]float64, 3)
+		for j := range fminmax[i] {
+			fminmax[i][j] = make([]float64, inp.N()+1)
+		}
+	}
+	dfalseTerms := make([]float64, N+3)
+	for i := 0; i <= N; i++ {
+		dfalseTerms[i+1] = inp.TermAt(i)
+	}
+	//'(72) and (73)
+	dfalseTerms[0] = -dfalseTerms[2]
+	dfalseTerms[N+2] = 2*dfalseTerms[N+1] - dfalseTerms[N]
+
+	fdiscrete[0] = fdiscrete[1] - (dfalseTerms[2]-dfalseTerms[1])/(dfalseTerms[2+1]-dfalseTerms[1])*(fdiscrete[2]-fdiscrete[1])
+	fdiscrete[N+1] = fdiscrete[N] + (dfalseTerms[N+1]-dfalseTerms[N])/(dfalseTerms[N+1]-dfalseTerms[N-1])*(fdiscrete[N]-fdiscrete[N-1])
+	//'(74)
+	for j := 0; j <= N; j++ {
+		fminmax[1][0][j] =
+			(dfalseTerms[j+1]-dfalseTerms[j])/(dfalseTerms[j+2]-dfalseTerms[j])*fdiscrete[j+1] +
+				(dfalseTerms[j+2]-dfalseTerms[j+1])/(dfalseTerms[j+2]-dfalseTerms[j])*fdiscrete[j]
+	}
+	//'[68)
+	for j := 1; j <= N+1; j++ {
+		Theta[0][j+1] = (dfalseTerms[j+1] - dfalseTerms[j]) / (dfalseTerms[j+1] - dfalseTerms[j-1]) * (fdiscrete[j] - fdiscrete[j-1])
+	}
+	//'(71)
+	for j := 0; j <= N; j++ {
+		Theta[2][j] = (dfalseTerms[j+1] - dfalseTerms[j]) / (dfalseTerms[j-1+2+1] - dfalseTerms[j]) * (fdiscrete[j-1+2] - fdiscrete[j])
+	}
+	//'(67)
+	for j := 1; j <= N; j++ {
+		if fdiscrete[j-1] < fdiscrete[j] && fdiscrete[j] <= fdiscrete[j+1] {
+			fminmax[0][1][j] = math.Min(fdiscrete[j]+0.5*Theta[0][j+1], fdiscrete[j+1])
+			fminmax[2][1][j] = math.Min(fdiscrete[j]+2*Theta[0][j+1], fdiscrete[j+1])
+		} else if fdiscrete[j-1] < fdiscrete[j] && fdiscrete[j] > fdiscrete[j+1] {
+			fminmax[0][1][j] = math.Max(fdiscrete[j]-0.5*inp.lambda*Theta[0][j+1], fdiscrete[j+1])
+			fminmax[2][1][j] = fdiscrete[j]
+		} else if fdiscrete[j-1] >= fdiscrete[j] && fdiscrete[j] <= fdiscrete[j+1] {
+			fminmax[0][1][j] = fdiscrete[j]
+			fminmax[2][1][j] = math.Min(fdiscrete[j]-0.5*inp.lambda*Theta[0][j+1], fdiscrete[j+1])
+		} else if fdiscrete[j-1] >= fdiscrete[j] && fdiscrete[j] > fdiscrete[j+1] {
+			fminmax[0][1][j] = math.Max(fdiscrete[j]+2*Theta[0][j+1], fdiscrete[j+1])
+			fminmax[2][1][j] = math.Max(fdiscrete[j]+0.5*Theta[0][j+1], fdiscrete[j+1])
+		}
+	}
+	//'(70)
+	for j := 0; j <= N-1; j++ {
+		if fdiscrete[j] < fdiscrete[j+1] && fdiscrete[j+1] <= fdiscrete[j+2] {
+			fminmax[0][2][j] = math.Max(fdiscrete[j+1]-2*Theta[2][j+1], fdiscrete[j])
+			fminmax[2][2][j] = math.Max(fdiscrete[j+1]-0.5*Theta[2][j+1], fdiscrete[j])
+		} else if fdiscrete[j] < fdiscrete[j+1] && fdiscrete[j+1] > fdiscrete[j+2] {
+			fminmax[0][2][j] = math.Max(fdiscrete[j+1]+0.5*inp.lambda*Theta[2][j+1], fdiscrete[j])
+			fminmax[2][2][j] = fdiscrete[j+1]
+		} else if fdiscrete[j] >= fdiscrete[j+1] && fdiscrete[j+1] < fdiscrete[j+2] {
+			fminmax[0][2][j] = fdiscrete[j+1]
+			fminmax[2][2][j] = math.Min(fdiscrete[j+1]+0.5*inp.lambda*Theta[2][j+1], fdiscrete[j])
+		} else if fdiscrete[j] >= fdiscrete[j+1] && fdiscrete[j+1] >= fdiscrete[j+2] {
+			fminmax[0][2][j] = math.Min(fdiscrete[j+1]-0.5*Theta[2][j+1], fdiscrete[j])
+			fminmax[2][2][j] = math.Min(fdiscrete[j+1]-2*Theta[2][j+1], fdiscrete[j])
+		}
+	}
+
+	for j := 1; j <= N-1; j++ {
+		if math.Max(fminmax[0][1][j], fminmax[0][2][j]) <= math.Min(fminmax[2][1][j], fminmax[2][2][j]) {
+			//'(75, 76)
+			fminmax[1][0][j] = bound(math.Max(fminmax[0][1][j], fminmax[0][2][j]), fminmax[1][0][j], math.Min(fminmax[2][1][j], fminmax[2][2][j]))
+		} else {
+			//'(78)
+			fminmax[1][0][j] = bound(math.Min(fminmax[2][1][j], fminmax[2][2][j]), fminmax[1][0][j], math.Max(fminmax[0][1][j], fminmax[0][2][j]))
+		}
+	}
+	//'(79)
+	if math.Abs(fminmax[1][0][0]-fdiscrete[0]) > 0.5*math.Abs(fminmax[1][0][1]-fdiscrete[0]) {
+		fminmax[1][0][0] = fdiscrete[1] - 0.5*(fminmax[1][0][1]-fdiscrete[0])
+	}
+	//'(80)
+	if math.Abs(fminmax[1][0][N]-fdiscrete[N]) > 0.5*math.Abs(fminmax[1][0][N-1]-fdiscrete[N]) {
+		fminmax[1][0][N] = fdiscrete[N] - 0.5*(fminmax[1][0][N-1]-fdiscrete[N])
+	}
+
+	//'(60)
+	fminmax[1][0][0] = bound(0, fminmax[1][0][0], 2*fdiscrete[1])
+	//'(61)
+	for j := 1; j <= N-1; j++ {
+		fminmax[1][0][j] = bound(0, fminmax[1][0][j], 2*math.Min(fdiscrete[j], fdiscrete[j+1]))
+	}
+	//'(62)
+	fminmax[1][0][N] = bound(0, fminmax[1][0][N], 2*fdiscrete[N])
+
+	//'finish, so populate the f array
+	f := make([]float64, inp.N()+1)
+	for j := 0; j <= N; j++ {
+		f[j] = fminmax[1][0][j]
+	}
+
+	return f
 }

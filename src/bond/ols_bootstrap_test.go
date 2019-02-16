@@ -20,7 +20,7 @@ func TestMCOLSBootstrapNotes(t *testing.T) {
 	bonds, yields := bondsFromQuotes(yearStart, quotes)
 
 	tenors := []m.Time{1.0 / 365, 1.0 / 12, 2.0 / 12, 3.0 / 12, 6.0 / 12, 1, 2, 3, 4, 5, 10, 20, 30}
-	spotCurve := OLSBootstrapFromFixedCoupon(monotone_convex.SpotRateInterpolator, yields, bonds, t0, tenors)
+	spotCurve := OLSBootstrapFromFixedCoupon(monotone_convex.SpotRateInterpolator(0), yields, bonds, t0, tenors)
 
 	expectedRates := []m.Rate{0.011219999790191169, 0.025820000171661396, 0.023740000724792664, 0.024489998817443837, 0.02512071150322988, 0.025823514641674032, 0.02551790456510539, 0.02506720947283312, 0.02513419625934795, 0.025304471150183236, 0.027458742246813946, 0.029973274900330017, 0.031206454632832045}
 

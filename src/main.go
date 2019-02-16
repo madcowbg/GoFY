@@ -25,8 +25,8 @@ func run_mc() {
 		fmt.Printf(
 			"%f\t%f\t%f\n",
 			t,
-			monotone_convex.SpotRateInterpolator(Terms, Rates)(t),
-			monotone_convex.ForwardRateInterpolator(Terms, Rates)(t))
+			monotone_convex.SpotRateInterpolator(1)(Terms, Rates)(t),
+			monotone_convex.ForwardRateInterpolator(1)(Terms, Rates)(t))
 	}
 }
 

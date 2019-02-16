@@ -45,3 +45,12 @@ func SpotCurveByConstantRateInterpolation(curve *FixedForwardRateCurve) *FixedSp
 		Rates:  rates,
 	}
 }
+
+func ConstantSpotRateInterpolation(curve *FixedSpotCurve, t m.Time) m.Rate {
+	i := Search(len(curve.Rates), func(i int) bool { return curve.Tenors[i] >= t })
+	if i >= len(curve.Rates) {
+		return curve.Rates[i-1]
+	} else {
+		return curve.Rates[i]
+	}
+}
