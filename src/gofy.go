@@ -116,13 +116,13 @@ func calculateAnalytics(instrumentType string, termsAndConditions string, StateO
 }
 
 func calculateOptionAnalytics(opt o.Option, parameters o.PricingParameters, spot m.Money, t m.Time) SimpleAnalytics {
-	pricing := o.GridPricing(parameters)
+	pricing := o.BinomialPricing(parameters)
 	return SimpleAnalytics{
 		Price: pricing(opt, spot, t),
 		Delta: o.Delta(pricing)(opt, spot, t),
 		Gamma: o.Gamma(pricing)(opt, spot, t),
 		Theta: o.Theta(pricing)(opt, spot, t),
-		Rho:   o.Rho(o.GridPricing, parameters)(opt, spot, t),
+		Rho:   o.Rho(o.BinomialPricing, parameters)(opt, spot, t),
 	}
 }
 

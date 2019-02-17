@@ -90,7 +90,7 @@ func Gamma(pricing Pricing) Greek {
 		return diff2nd(
 			func(x float64) float64 { return float64(pricing(option, m.Money(x), t)) },
 			float64(spot),
-			0.01*float64(spot))
+			0.05*float64(spot))
 	}
 }
 
