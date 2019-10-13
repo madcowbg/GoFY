@@ -1,0 +1,58 @@
+syntax = "proto2";
+
+package proto.generated;
+
+option go_package = "proto/generated";
+
+message CouponBondDef {
+    required float IssueTime = 1;
+    required float Maturity = 2;
+    required float CouponFrequency = 3;
+    required float Coupon = 4;
+}
+
+message RequestCalculateOptionAnalytics {
+    required OptionTermsAndConditions termsAndConditions = 1;
+    required StateOfWorld stateOfWorld = 2;
+}
+
+message ResponseCalculateOptionAnalytics {
+    required float Price = 1;
+    required float Delta = 2;
+    required float Gamma = 3;
+    required float Theta = 4;
+    required float Rho = 5;
+    required float Intrinsic = 6;
+}
+
+enum InstrumentType {
+    Option = 1;
+}
+
+message OptionTermsAndConditions {
+    required float S = 1;
+    required float T = 2;
+    required OptionType Type = 3;
+    required OptionParity Parity = 4;
+}
+
+enum OptionType {
+    American = 1;
+    European = 2;
+}
+
+enum OptionParity {
+    Call = 1;
+    Put = 2;
+}
+
+message StateOfWorld {
+    required PricingParameters parameters = 1;
+    required float Spot = 2;
+    required float Time = 3;
+}
+
+message PricingParameters {
+    required float Sigma = 1;
+    required float R = 2;
+}

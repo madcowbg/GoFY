@@ -71,11 +71,12 @@ func readOptionType(optionTnC OptionTnC) o.Option {
 }
 
 type SimpleAnalytics struct {
-	Price m.Money
-	Delta float64
-	Gamma float64
-	Theta float64
-	Rho   float64
+	Price     m.Money
+	Delta     float64
+	Gamma     float64
+	Theta     float64
+	Rho       float64
+	Intrinsic m.Money
 }
 
 type StateOfWorld struct {
@@ -118,11 +119,12 @@ func calculateAnalytics(instrumentType string, termsAndConditions string, StateO
 func calculateOptionAnalytics(opt o.Option, parameters o.PricingParameters, spot m.Money, t m.Time) SimpleAnalytics {
 	pricing := o.BinomialPricing(parameters)
 	return SimpleAnalytics{
-		Price: pricing(opt, spot, t),
-		Delta: o.Delta(pricing)(opt, spot, t),
-		Gamma: o.Gamma(pricing)(opt, spot, t),
-		Theta: o.Theta(pricing)(opt, spot, t),
-		Rho:   o.Rho(o.BinomialPricing, parameters)(opt, spot, t),
+		Price:     pricing(opt, spot, t),
+		Delta:     o.Delta(pricing)(opt, spot, t),
+		Gamma:     o.Gamma(pricing)(opt, spot, t),
+		Theta:     o.Theta(pricing)(opt, spot, t),
+		Rho:       o.Rho(o.BinomialPricing, parameters)(opt, spot, t),
+		Intrinsic: opt.Payoff(spot),
 	}
 }
 
@@ -289,6 +291,6 @@ func bootstrapCurve(method BootstrapMethod, lambda float64, t0 float64, Bootstra
 	return C.CString(string(res))
 }
 
-func main() {
+/*func main() {
 	// just needed otherwise won't compile dll
-}
+}*/
