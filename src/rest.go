@@ -12,36 +12,49 @@ import (
 	"net/http/httputil"
 )
 
-func homePage(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "GET":
-		fmt.Fprintf(w, "Welcome to the API!")
-		fmt.Printf("call received without actual request...\n")
-	case "POST":
-		//dumpContent(r)
+type Calculator func([]byte) ([]byte, error)
+type Handler func(w http.ResponseWriter, r *http.Request)
 
-		buffer := new(bytes.Buffer)
-		buffer.ReadFrom(r.Body)
+func endpointHandler(endpoint string, handler Calculator) Handler {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "Welcome to API!: "+endpoint)
+			fmt.Printf("call received without actual request...\n")
+		case "POST":
+			//dumpContent(r)
 
-		request := generated.RequestCalculateOptionAnalytics{}
-		err := proto.Unmarshal(buffer.Bytes(), &request)
-		if err != nil {
-			fmt.Println("Error unmarshalling request:", err)
-			return
+			buffer := new(bytes.Buffer)
+			buffer.ReadFrom(r.Body)
+
+			result, err := handler(buffer.Bytes())
+
+			if err != nil {
+				fmt.Println("Error calculating result:", err)
+				fmt.Println(w, "Error calculating result:", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/protobuf")
+			w.Write(result)
 		}
-
-		opt := readOptionTnC(request.TermsAndConditions)
-		analytics := calculateOptionAnalyticsResponse(opt, asPricingParameters(request.StateOfWorld.Parameters), measures.Money(*request.StateOfWorld.Spot), measures.Time(*request.StateOfWorld.Time))
-
-		result, err := proto.Marshal(analytics)
-		if err != nil {
-			fmt.Println("Error marshalling result:", err)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/protobuf")
-		w.Write(result)
 	}
+}
+
+func handleCalculateOptionAnalytics(input []byte) ([]byte, error) {
+	request := generated.RequestCalculateOptionAnalytics{}
+	err := proto.Unmarshal(input, &request)
+	if err != nil {
+		fmt.Println("Error unmarshalling request:", err)
+		return nil, err
+	}
+
+	opt := readOptionTnC(request.TermsAndConditions)
+	analytics := calculateOptionAnalyticsResponse(opt, asPricingParameters(request.StateOfWorld.Parameters), measures.Money(*request.StateOfWorld.Spot), measures.Time(*request.StateOfWorld.Time))
+
+	return proto.Marshal(analytics)
 }
 
 func calculateOptionAnalyticsResponse(opt option.Option, parameters option.PricingParameters, spot measures.Money, t measures.Time) *generated.ResponseCalculateOptionAnalytics {
@@ -103,7 +116,7 @@ func dumpContent(request *http.Request) {
 }
 
 func handleRequests() {
-	http.HandleFunc("/", homePage)
+	http.HandleFunc("/calculateOptionAnalytics", endpointHandler("/calculateOptionAnalytics", handleCalculateOptionAnalytics))
 	log.Fatal(http.ListenAndServe(":10001", nil))
 }
 
