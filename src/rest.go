@@ -1,6 +1,9 @@
 package main
 
+import "C"
 import (
+	"./bond"
+	"./bond/monotone_convex"
 	"./measures"
 	"./option"
 	"./proto/generated"
@@ -103,6 +106,119 @@ func readOptionTnC(tnc *generated.OptionTermsAndConditions) option.Option {
 	return nil
 }
 
+func handleBootstrapCurve(input []byte) ([]byte, error) {
+	request := generated.RequestBootstrapCurve{}
+	err := proto.Unmarshal(input, &request)
+	if err != nil {
+		return nil, err
+	}
+
+	bootstrapData := request.BootstrapData
+	if len(bootstrapData.BondDefinitions) != len(bootstrapData.Yields) {
+		return nil, fmt.Errorf(
+			"bad format - different length of bonds and qoutes: %d != %d\n",
+			len(bootstrapData.BondDefinitions),
+			len(bootstrapData.Yields))
+	}
+
+	bonds := make([]*bond.FixedCouponBond, len(bootstrapData.BondDefinitions))
+	for i, bondDef := range bootstrapData.BondDefinitions {
+		bonds[i] = &bond.FixedCouponBond{
+			Expirable: bond.Expirable{Maturity: measures.Time(*bondDef.Maturity)},
+			IssueTime: measures.Time(*bondDef.IssueTime),
+			Coupon: bond.FixedCouponTerm{
+				Frequency: float64(*bondDef.CouponFrequency),
+				PerAnnum:  measures.Money(*bondDef.Coupon),
+			},
+		}
+	}
+
+	yields := make([]measures.Rate, len(bootstrapData.Yields))
+	for i, y := range bootstrapData.Yields {
+		yields[i] = measures.Rate(y)
+	}
+
+	switch *request.Method {
+	case generated.BootstrapMethod_MonotoneConvex:
+		tenorsDefs := *request.TenorData
+		if len(tenorsDefs.Tenors) == 0 {
+			log.Fatalf("Invalid tenor request, needed for monotone convex! : %v\n", tenorsDefs.Tenors)
+		}
+
+		tenors := asTime(tenorsDefs.Tenors)
+
+		spotCurve := bond.OLSBootstrapFromFixedCoupon(monotone_convex.SpotRateInterpolator(*request.Lambda), yields, bonds, measures.Time(*request.T0), tenors)
+
+		outputTenorDefs := request.OutputTenors
+
+		var interpolatedSpot bond.FixedSpotCurve
+		var interpolatedForward bond.FixedForwardRateCurve
+		if len(outputTenorDefs.Tenors) > 0 {
+			interpolatedSpot = bond.FixedSpotCurve{
+				Tenors: asTime(outputTenorDefs.Tenors),
+				Rates: bond.InterpolateOnArray(
+					monotone_convex.SpotRateInterpolator(*request.Lambda)(spotCurve.Tenors, spotCurve.Rates),
+					asTime(outputTenorDefs.Tenors))}
+			interpolatedForward = bond.FixedForwardRateCurve{
+				Tenors: asTime(outputTenorDefs.Tenors),
+				Rates: bond.InterpolateOnArray(
+					monotone_convex.ForwardRateInterpolator(*request.Lambda)(spotCurve.Tenors, spotCurve.Rates),
+					asTime(outputTenorDefs.Tenors))}
+		}
+
+		return proto.Marshal(&generated.ResponseBootstrapCurve{
+			SpotCurve:                asProtoFSC(spotCurve),
+			InterpolatedSpotCurve:    asProtoFSC(&interpolatedSpot),
+			InterpolatedForwardCurve: asProtoFFRC(&interpolatedForward),
+		})
+	case generated.BootstrapMethod_Naive:
+		forwardCurve := bond.NaiveBootstrapFromFixedCoupon(yields, bonds, measures.Time(*request.T0))
+		spotCurve := bond.SpotCurveByConstantRateInterpolation(forwardCurve)
+
+		return proto.Marshal(&generated.ResponseBootstrapCurve{SpotCurve: asProtoFSC(spotCurve)})
+	default:
+		return nil, fmt.Errorf("Invalid bootstrap method: %s\n", *request.Method)
+	}
+}
+
+func asProtoFSC(curve *bond.FixedSpotCurve) *generated.Curve {
+	return &generated.Curve{
+		Rates:  asFloatRate(curve.Rates),
+		Tenors: asFloatTime(curve.Tenors),
+	}
+}
+
+func asFloatRate(a []measures.Rate) []float32 {
+	res := make([]float32, len(a))
+	for i, t := range a {
+		res[i] = float32(t)
+	}
+	return res
+}
+
+func asFloatTime(a []measures.Time) []float32 {
+	res := make([]float32, len(a))
+	for i, t := range a {
+		res[i] = float32(t)
+	}
+	return res
+}
+
+func asProtoFFRC(curve *bond.FixedForwardRateCurve) *generated.Curve {
+	return &generated.Curve{
+		Rates:  asFloatRate(curve.Rates),
+		Tenors: asFloatTime(curve.Tenors),
+	}
+}
+
+func asTime(a []float32) []measures.Time {
+	res := make([]measures.Time, len(a))
+	for i, t := range a {
+		res[i] = measures.Time(t)
+	}
+	return res
+}
+
 func dumpContent(request *http.Request) {
 	output, err := httputil.DumpRequest(request, true)
 	if err != nil {
@@ -117,6 +233,7 @@ func dumpContent(request *http.Request) {
 
 func handleRequests() {
 	http.HandleFunc("/calculateOptionAnalytics", endpointHandler("/calculateOptionAnalytics", handleCalculateOptionAnalytics))
+	http.HandleFunc("/calculateBootstrapCurve", endpointHandler("/calculateBootstrapCurve", handleBootstrapCurve))
 	log.Fatal(http.ListenAndServe(":10001", nil))
 }
 

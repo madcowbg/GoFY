@@ -4,13 +4,6 @@ package proto.generated;
 
 option go_package = "proto/generated";
 
-message CouponBondDef {
-    required float IssueTime = 1;
-    required float Maturity = 2;
-    required float CouponFrequency = 3;
-    required float Coupon = 4;
-}
-
 message RequestCalculateOptionAnalytics {
     required OptionTermsAndConditions termsAndConditions = 1;
     required StateOfWorld stateOfWorld = 2;
@@ -55,4 +48,46 @@ message StateOfWorld {
 message PricingParameters {
     required float Sigma = 1;
     required float R = 2;
+}
+
+message RequestBootstrapCurve {
+    required BootstrapMethod method = 1;
+    required double lambda = 2;
+    required float t0 = 3;
+    required CurveBootstrapData bootstrapData = 4;
+    required TenorDefs tenorData = 5;
+    required TenorDefs outputTenors = 6;
+}
+
+message ResponseBootstrapCurve {
+    required Curve SpotCurve = 1;
+    required Curve InterpolatedSpotCurve = 2;
+    required Curve InterpolatedForwardCurve = 3;
+}
+
+message TenorDefs {
+    repeated float tenors = 1;
+}
+
+
+message CurveBootstrapData {
+    repeated CouponBondDef bondDefinitions = 1;
+    repeated float Yields = 2;
+}
+
+message CouponBondDef {
+    required float IssueTime = 1;
+    required float Maturity = 2;
+    required float CouponFrequency = 3;
+    required float Coupon = 4;
+}
+
+enum BootstrapMethod {
+    Naive = 1;
+    MonotoneConvex = 2;
+}
+
+message Curve {
+    repeated float Tenors = 1;
+    repeated float Rates = 2;
 }
