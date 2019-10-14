@@ -61,8 +61,8 @@ message RequestBootstrapCurve {
 
 message ResponseBootstrapCurve {
     required Curve SpotCurve = 1;
-    required Curve InterpolatedSpotCurve = 2;
-    required Curve InterpolatedForwardCurve = 3;
+    optional Curve InterpolatedSpotCurve = 2;
+    optional Curve InterpolatedForwardCurve = 3;
 }
 
 message TenorDefs {

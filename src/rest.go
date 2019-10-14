@@ -175,7 +175,8 @@ func handleBootstrapCurve(input []byte) ([]byte, error) {
 		forwardCurve := bond.NaiveBootstrapFromFixedCoupon(yields, bonds, measures.Time(*request.T0))
 		spotCurve := bond.SpotCurveByConstantRateInterpolation(forwardCurve)
 
-		return proto.Marshal(&generated.ResponseBootstrapCurve{SpotCurve: asProtoFSC(spotCurve)})
+		return proto.Marshal(&generated.ResponseBootstrapCurve{
+			SpotCurve: asProtoFSC(spotCurve)})
 	default:
 		return nil, fmt.Errorf("Invalid bootstrap method: %s\n", *request.Method)
 	}
